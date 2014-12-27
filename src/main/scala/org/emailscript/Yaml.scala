@@ -2,7 +2,7 @@ package org.emailscript
 
 import java.io._
 
-import org.emailscript.beans.EmailAccountBean
+import org.emailscript.beans.{Who, GoogleContactsBean, EmailAccountBean}
 import org.yaml.snakeyaml
 import org.yaml.snakeyaml.constructor.Constructor
 import org.yaml.snakeyaml.nodes.{Node, Tag}
@@ -65,6 +65,9 @@ object Yaml {
   private def createYaml(): org.yaml.snakeyaml.Yaml = {
     val constructor = new Constructor()
     constructor.addTypeDescription( new TypeDescription(classOf[EmailAccountBean], new Tag("!EmailAccount")) )
+    constructor.addTypeDescription( new TypeDescription(classOf[GoogleContactsBean], new Tag("!GoogleContacts")))
+    constructor.addTypeDescription( new TypeDescription(classOf[Who], new Tag("!Who")))
+
     val options = new DumperOptions()
     options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK)
     new snakeyaml.Yaml(constructor, new Representer(), options)
@@ -95,7 +98,7 @@ object Yaml {
     val options = new DumperOptions()
     //options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
     options.setAllowReadOnlyProperties(true)
-    val yaml = new org.yaml.snakeyaml.Yaml(constructor, representer, options)
+    val yaml = new snakeyaml.Yaml(constructor, representer, options)
 
     val who = new TestWho("personal", "test@test.com")
 
