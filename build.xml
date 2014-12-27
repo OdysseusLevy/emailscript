@@ -1,0 +1,81 @@
+<project name="Example script" default="build" basedir=".">
+    <description> Build script </description>
+
+    <!-- Main targets -->
+    <target name="build" depends="package">
+    </target>
+
+
+    <!-- Compiler settings -->
+    <property name="jvm-target" value="jvm-1.7"/>
+
+    <!-- Paths -->
+    <property name="src.dir" location="${basedir}/src/main"/>
+    <property name="java.src.dir" location="${src.dir}/java" />
+    <property name="scala.src.dir" location="${src.dir}/scala" />
+    <property name="resource.dir" location="${src.dir}/resources" />
+    <property name="lib.dir" location="${basedir}/lib"/>
+    <property name="build.dir" location="${basedir}/build"/>
+    <property name="cls.build.dir" location="${build.dir}/classes"/>
+    <property name="dist.dir" location="${basedir}/dist"/>
+    <property name="build.lib.dir" location="${basedir}/build-lib"/>
+    <property name="scala.lib.dir" location="${basedir}/build-lib"/>
+
+    <path id="compile.classpath">
+        <pathelement location="${scala.lib.dir}/scala-library.jar"/>
+        <fileset dir="${lib.dir}"> <include name="*.jar" /> </fileset>
+        <fileset dir="${cls.build.dir}"/>
+    </path>
+
+    <!-- Scala compiler task -->
+    <taskdef resource="scala/tools/ant/antlib.xml">
+        <classpath>
+            <pathelement location="${scala.lib.dir}/scala-compiler.jar"/>
+            <pathelement location="${scala.lib.dir}/scala-library.jar"/>
+            <pathelement location="${scala.lib.dir}/scala-reflect.jar"/>
+        </classpath>
+    </taskdef>
+
+    <!-- Utility to create executable jars -->
+    <taskdef name="one-jar" classname="com.simontuffs.onejar.ant.OneJarTask"
+      classpath="${build.lib.dir}/one-jar-ant-task.jar"/>
+
+    <!-- Targets -->
+    <target name="clean">
+        <delete dir="${dist.dir}"/>
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="compile" depends="clean">
+        <mkdir dir="${cls.build.dir}"/>
+        <copy todir="${cls.build.dir}">
+            <fileset dir="${resource.dir}"/>
+        </copy>
+        <javac includeantruntime="false" srcdir="${java.src.dir}" classpathref="compile.classpath" destdir="${cls.build.dir}" />
+        <scalac srcdir="${src.dir}" destdir="${cls.build.dir}" target="${jvm-target}" classpathref="compile.classpath" force="yes" deprecation="yes">
+            <include name="scala/**/*.scala"/>
+            <include name="java/**/*.java"/>
+        </scalac>
+    </target>
+
+    <target name="package" depends="compile">
+
+        <mkdir dir="${dist.dir}"/>
+        <!-- Construct the One-JAR file -->
+        <one-jar destfile="${dist.dir}/emailscript.jar">
+            <manifest>
+                <attribute name="One-Jar-Main-Class" value="org.emailscript.Emailscript"/>
+            </manifest>
+
+            <main>
+                <!-- Construct main.jar from classes and source code -->
+                <fileset dir="${cls.build.dir}"/>
+            </main>
+            <lib>
+                <fileset dir="${lib.dir}"/>
+                <fileset file="${scala.lib.dir}/scala-library.jar"/>
+            </lib>
+        </one-jar>
+    </target>
+
+</project>

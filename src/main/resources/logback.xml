@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<configuration>
+
+    <!-- test -->
+    <!--
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+         <file>mailscript.log</file>
+         <encoder>
+                 <pattern>%date %level [%thread] %logger{10} [%file:%line] %msg%n</pattern>
+         </encoder>
+    </appender>
+    -->
+
+    <!-- We want a different log file for each script -->
+    <appender name="SIFT" class="ch.qos.logback.classic.sift.SiftingAppender">
+        <discriminator>
+            <key>script</key>
+            <defaultValue>emailscript.log</defaultValue>
+        </discriminator>
+        <sift>
+            <appender name="FILE-${script}" class="ch.qos.logback.core.FileAppender">
+                <file>${script}.log</file>
+                <layout class="ch.qos.logback.classic.PatternLayout">
+                    <pattern>%d [%thread] %level %logger{35} - %msg%n</pattern>
+                </layout>
+            </appender>
+        </sift>
+    </appender>
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+
+        <!-- encoders are assigned by default the type
+             ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} %-5level %logger{36} - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="SIFT" />
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>
