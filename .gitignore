@@ -1,0 +1,13 @@
+build
+out
+accounts
+data
+target
+*.class
+.idea
+ascp.sh
+*.DS_Store
+*.log
+*.pem
+*.iml
+*.ipr
