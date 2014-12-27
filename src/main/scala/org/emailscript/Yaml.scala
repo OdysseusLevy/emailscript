@@ -2,13 +2,12 @@ package org.emailscript
 
 import java.io._
 
+import org.emailscript.beans.EmailAccountBean
 import org.yaml.snakeyaml
 import org.yaml.snakeyaml.constructor.Constructor
 import org.yaml.snakeyaml.nodes.{Node, Tag}
 import org.yaml.snakeyaml.representer.{Represent, Representer}
 import org.yaml.snakeyaml.{DumperOptions, TypeDescription}
-
-import scala.collection.JavaConverters._
 
 /**
  * Responsible for loading and storing yaml based data
@@ -52,7 +51,7 @@ object Yaml {
   def apply(dirName: String = defaultDataDirName) = new Yaml(new File(dirName), getDataFiles(new File(defaultDataDirName)))
 
   def readFromFile[T](file: File): T = {
-    val yaml = new snakeyaml.Yaml()
+    val yaml = createYaml()
     val reader = new FileReader(file)
 
     try {
@@ -63,10 +62,17 @@ object Yaml {
 
   }
 
-  def saveToFile(data: AnyRef, file: File) = {
+  private def createYaml(): org.yaml.snakeyaml.Yaml = {
+    val constructor = new Constructor()
+    constructor.addTypeDescription( new TypeDescription(classOf[EmailAccountBean], new Tag("!EmailAccount")) )
     val options = new DumperOptions()
     options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK)
-    val yaml = new org.yaml.snakeyaml.Yaml(options)
+    new snakeyaml.Yaml(constructor, new Representer(), options)
+  }
+
+  def saveToFile(data: AnyRef, file: File) = {
+
+    val yaml = createYaml()
     yaml.dump(data, new FileWriter(file))
   }
 
@@ -109,15 +115,16 @@ object Yaml {
 
   val representer = new Representer {
 
-    val whoRepresent = new Represent {
-      override def representData(data: scala.Any): Node = {
-        val who = data.asInstanceOf[TestWho]
-        val sequence = Seq(who.personal, who.email).asJava
-        representSequence(whoTag, sequence, true )
-      }
-    }
+//    val whoRepresent = new Represent {
+//      override def representData(data: scala.Any): Node = {
+//        val who = data.asInstanceOf[TestWho]
+//        val sequence = Seq(who.personal, who.email).asJava
+//        representSequence(whoTag, sequence, true )
+//      }
+//    }
 
-    addClassTag(classOf[TestWho], whoTag)
-    representers.put(classOf[TestWho], whoRepresent)
+    addClassTag(classOf[EmailAccountBean], new Tag("!Account"))
+    //addClassTag(classOf[TestWho], whoTag)
+    //representers.put(classOf[TestWho], whoRepresent)
   }
 }
