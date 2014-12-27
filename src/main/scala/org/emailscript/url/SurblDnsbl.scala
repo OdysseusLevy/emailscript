@@ -41,7 +41,11 @@ object SurblDnsbl {
 
   def loadResource(name: String): Iterator[String] = {
     try {
-      Source.fromURL(getClass.getResource("/" + name)).getLines()
+      val resource = getClass.getResource("/" + name)
+      if (resource == null)
+        throw new RuntimeException(s"Could not find resource $name")
+
+      Source.fromURL(resource).getLines()
     } catch {
       case e: Throwable => logger.error(s"Error loading resource file: $name", e); throw e
     }
