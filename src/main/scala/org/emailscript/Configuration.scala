@@ -22,8 +22,13 @@ object Configuration {
   val LoggerName = "logger"
   val TemplateName = "Template"
 
-  def getFiles(folder: String, suffix: String): Stream[File] = {
-    new File(folder).listFiles.toStream.filter(_.getName.endsWith(suffix))
+  def getFiles(folderName: String, suffix: String): Stream[File] = {
+    val folder = new File(folderName)
+    if (!folder.exists()){
+      folder.mkdir()
+    }
+
+    folder.listFiles.toStream.filter(_.getName.endsWith(suffix))
   }
 
   def stripSuffix(name: String) = {
