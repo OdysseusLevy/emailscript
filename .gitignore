@@ -5,6 +5,8 @@ data
 target
 *.class
 .idea
+ascp.sh
+*.DS_Store
 *.log
 *.pem
 *.iml
