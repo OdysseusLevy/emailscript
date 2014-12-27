@@ -56,7 +56,7 @@ object Configuration {
   }
 
   private def readBean(file: File)= {
-    val bean = Yaml.readFromFile[AccountBean](file)
+    val bean = Yaml.readFromFile[AccountBean](file).getOrElse(new EmailAccountBean())
     if (Strings.isNullOrEmpty(bean.getNickname()))
       bean.setNickname(Files.getNameWithoutExtension(file.getName))
     bean

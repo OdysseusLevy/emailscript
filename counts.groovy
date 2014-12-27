@@ -1,3 +1,6 @@
+import org.emailscript.Template
+
+import java.text.DecimalFormat
 
 class Count {
     static linecount = 0
@@ -10,11 +13,15 @@ class Count {
     def backgroundColor() {
         (linecount++ % 2 == 0)? "#cef;":"#fff"
     }
-    def percentRead() {read ? read.toFloat()/count.toFloat() * 100: 0}
+
+    def sizeInBytes() { Template.toBytes(size)}
+    def percentRead() { Template.toPercent(read,count)}
+
     def String toString() {" count: ${count} read: ${read}"}
 }
 
-def emails = cosmosgame.getEmails("Inbox")
+def folder = "@SaneArchive"
+def emails = cosmosgame.getEmails(folder)
 def counts = [:]
 
 def increment(counts, email) {
@@ -37,7 +44,7 @@ def sorted = counts.sort {-it.value.count}
 
 sorted.forEach{ k,v -> println("$k count: $v.count read: $v.read size: $v.size percentRead: ${v.percentRead()} isFriend: ${v.isFriend}")}
 
-def result = Template.execute("table.ms", [counts:sorted.values()])
+def result = Template.execute("table.ms", [folder: folder, size: emails.size(), counts:sorted.values()])
 println result
 
 def mail = cosmosgame.newMail()

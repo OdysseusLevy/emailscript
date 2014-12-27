@@ -18,9 +18,9 @@ class Yaml(val dataDir: File, var dataFiles: Map[String,File]) {
     val dataName = name + Yaml.ymlExtension
 
     if(!dataFiles.contains(dataName))
-      callback()
-    else
-      Yaml.readFromFile(dataFiles(dataName))
+      return callback()
+
+    Yaml.readFromFile(dataFiles(dataName)).getOrElse(callback())
   }
 
   def set(name: String, data: AnyRef) {
@@ -50,12 +50,12 @@ object Yaml {
 
   def apply(dirName: String = defaultDataDirName) = new Yaml(new File(dirName), getDataFiles(new File(defaultDataDirName)))
 
-  def readFromFile[T](file: File): T = {
+  def readFromFile[T](file: File): Option[T] = {
     val yaml = createYaml()
     val reader = new FileReader(file)
 
     try {
-      yaml.load(reader).asInstanceOf[T]
+      Option(yaml.load(reader).asInstanceOf[T])
     } finally {
       reader.close()
     }
