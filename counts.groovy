@@ -1,7 +1,5 @@
 import org.emailscript.Template
 
-import java.text.DecimalFormat
-
 class Count {
     static linecount = 0
 

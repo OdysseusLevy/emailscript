@@ -3,7 +3,6 @@ package org.emailscript
 import org.emailscript.beans.{GoogleContact, Who}
 
 trait ContactsAccount {
-  val nickName: String
   val account: String
 
   val contacts: List[GoogleContact]

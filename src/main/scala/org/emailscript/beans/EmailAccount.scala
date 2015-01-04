@@ -40,7 +40,7 @@ case class EmailAccount(val host: String, val user: String, val password: String
     props
   }
 
-  def newMail() = new EmailBean
+  def newMail() = EmailBean(user)
   def send(message: EmailBean) = MailUtils.sendMessage(this, message)
 
   def scanFolder(folderName: String, scanner: ScriptCallback): Unit = MailUtils.scanFolder(this, folderName, scanner)

@@ -25,8 +25,9 @@ object GoogleContact {
   }
 }
 
-case class GoogleContacts(account: String, service: ContactsService, nickName: String = "Test") extends ContactsAccount {
+case class GoogleContacts(account: String, password:String) extends ContactsAccount {
 
+  lazy val service: ContactsService = GoogleContacts.getService(account, password)
   import org.emailscript.beans.GoogleContacts._
 
   lazy val groupHrefToName = getGroupMap(service, account)
@@ -75,17 +76,11 @@ class GoogleContactsBean extends AccountBean {
 
 object GoogleContacts {
 
-  val appName = "mailscript.org"
+  val appName = "emailscript.org"
   val maxResults = 1200
 
-  def apply(bean: GoogleContactsBean) = {
-    val service = getService(bean.account, bean.password)
-    new GoogleContacts(bean.account, service, bean.nickname)
-  }
-
-  def apply(account: String, password: String): GoogleContacts = {
-    val service = getService(account, password)
-    new GoogleContacts(account, service)
+  def apply(bean: GoogleContactsBean): GoogleContacts = {
+    new GoogleContacts(bean.account, bean.password)
   }
 
   private def getService(account: String, password: String) = {
@@ -111,9 +106,8 @@ object GoogleContacts {
 
   def main(args: Array[String]) {
 
-    val contacts: GoogleContacts = GoogleContacts.apply("odysseus.levy@gmail.com", "Ulysses87")
 
-    contacts.addContact(Who("Testwww", "testvvvv@test.com"), Set("Businesses", "Family"))
+    //contacts.addContact(Who("Testwww", "testvvvv@test.com"), Set("Businesses", "Family"))
 
 //    contacts.groupNames.foreach { name: String =>
 //      println(name)

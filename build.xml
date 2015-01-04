@@ -78,4 +78,12 @@
         </one-jar>
     </target>
 
+    <target name="distribution" depends="package">
+
+        <zip destfile="${dist.dir}/emailscript.zip">
+            <fileset dir="samples"/>
+            <fileset dir="${dist.dir}" includes="emailscript.jar"/>
+        </zip>
+
+    </target>
 </project>
