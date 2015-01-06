@@ -1,11 +1,12 @@
 package org.emailscript
 
 import java.io._
+import scala.collection.JavaConverters._
 
-import org.emailscript.beans.{Who, GoogleContactsBean, EmailAccountBean}
+import org.emailscript.beans.{LastScan, Who, GoogleContactsBean, EmailAccountBean}
 import org.yaml.snakeyaml
-import org.yaml.snakeyaml.constructor.Constructor
-import org.yaml.snakeyaml.nodes.{Node, Tag}
+import org.yaml.snakeyaml.constructor.{Construct, Constructor}
+import org.yaml.snakeyaml.nodes.{ScalarNode, Node, Tag}
 import org.yaml.snakeyaml.representer.{Represent, Representer}
 import org.yaml.snakeyaml.{DumperOptions, TypeDescription}
 
@@ -45,38 +46,67 @@ object filter extends FilenameFilter {
 
 object Yaml {
 
+  val WhoTag = new Tag("!Who")
+  val EmailAccountTag = new Tag("!EmailAccount")
+  val GoogleContactsTag = new Tag("!GoogleContacts")
+  val LastScanTag = new Tag("!LastScan")
+
+  val tagMap = Map(
+    WhoTag -> classOf[Who],
+    EmailAccountTag -> classOf[EmailAccountBean],
+    GoogleContactsTag -> classOf[GoogleContactsBean],
+    LastScanTag -> classOf[LastScan]
+  )
+
+  val yaml = createYaml()
+
   val ymlExtension = ".yml"
   val defaultDataDirName = "data"
 
   def apply(dirName: String = defaultDataDirName) = new Yaml(new File(dirName), getDataFiles(new File(defaultDataDirName)))
 
+  def read[T](reader: Reader) = {
+    Option(yaml.load(reader).asInstanceOf[T])
+  }
+
   def readFromFile[T](file: File): Option[T] = {
-    val yaml = createYaml()
     val reader = new FileReader(file)
 
     try {
-      Option(yaml.load(reader).asInstanceOf[T])
+      read(reader)
     } finally {
       reader.close()
     }
-
   }
 
   private def createYaml(): org.yaml.snakeyaml.Yaml = {
     val constructor = new Constructor()
-    constructor.addTypeDescription( new TypeDescription(classOf[EmailAccountBean], new Tag("!EmailAccount")) )
-    constructor.addTypeDescription( new TypeDescription(classOf[GoogleContactsBean], new Tag("!GoogleContacts")))
-    constructor.addTypeDescription( new TypeDescription(classOf[Who], new Tag("!Who")))
+    val representer = new Representer()
+
+    tagMap.foreach { case(tag: Tag, c: Class[_]) =>
+      constructor.addTypeDescription( new TypeDescription(c, tag))
+      representer.addClassTag(c, tag)
+    }
 
     val options = new DumperOptions()
     options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK)
-    new snakeyaml.Yaml(constructor, new Representer(), options)
+    new snakeyaml.Yaml(constructor, representer, options)
+  }
+
+  def save(data: AnyRef, writer: Writer) = {
+    val yaml = createYaml()
+    yaml.dump(data, writer)
   }
 
   def saveToFile(data: AnyRef, file: File) = {
 
     val yaml = createYaml()
-    yaml.dump(data, new FileWriter(file))
+    val writer = new FileWriter((file))
+    try {
+      save(data, writer)
+    } finally {
+      writer.close()
+    }
   }
 
   def getDataFiles(dataDir: File): Map[String, File] = {
@@ -89,15 +119,17 @@ object Yaml {
     dataDir.listFiles(filter).map(file => file.getName -> file).toMap
   }
 
-  val whoTag = new Tag("!Who")
+
 
   def main(args: Array[String]) {
 
     val constructor = new Constructor()
-    constructor.addTypeDescription( new TypeDescription(classOf[TestWho], whoTag) )
+    constructor.addTypeDescription( new TypeDescription(classOf[TestWho], WhoTag) )
     val options = new DumperOptions()
     //options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
     options.setAllowReadOnlyProperties(true)
+
+    val representer = new Representer()
     val yaml = new snakeyaml.Yaml(constructor, representer, options)
 
     val who = new TestWho("personal", "test@test.com")
@@ -106,6 +138,21 @@ object Yaml {
     println(result)
     val whoIn = yaml.load(result)
     println(s"$whoIn")
+  }
+
+  val constructor = new Constructor {
+    this.yamlConstructors.put(WhoTag, new WhoConstruct);
+
+    class WhoConstruct() extends Construct {
+      override def construct(node: Node): AnyRef = {
+        val whoText = constructScalar(node.asInstanceOf[ScalarNode])
+
+        new TestWho("aa", "bbb")
+      }
+
+      override def construct2ndStep(node: Node, `object`: scala.Any): Unit = {}
+    }
+
   }
 
   class TestWho(val personal: String, val email: String){
@@ -118,16 +165,13 @@ object Yaml {
 
   val representer = new Representer {
 
-//    val whoRepresent = new Represent {
-//      override def representData(data: scala.Any): Node = {
-//        val who = data.asInstanceOf[TestWho]
-//        val sequence = Seq(who.personal, who.email).asJava
-//        representSequence(whoTag, sequence, true )
-//      }
-//    }
-
-    addClassTag(classOf[EmailAccountBean], new Tag("!Account"))
-    //addClassTag(classOf[TestWho], whoTag)
-    //representers.put(classOf[TestWho], whoRepresent)
+    val whoRepresent = new Represent {
+      override def representData(data: scala.Any): Node = {
+        val who = data.asInstanceOf[TestWho]
+        val sequence = Seq(who.personal, who.email).asJava
+        representSequence(WhoTag, sequence, true)
+      }
+    }
   }
+
 }

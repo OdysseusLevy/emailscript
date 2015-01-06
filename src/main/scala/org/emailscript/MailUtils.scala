@@ -38,6 +38,7 @@ object MailUtils {
 
   def sendMessage(account: EmailAccount, messageBean: EmailBean) = {
 
+    logger.info(s"sending email to ${messageBean.getTo}")
     val session = Session.getInstance(account.toSmtpProperties())
     val message = messageBean.toMessage(session)
     Transport.send(message, account.user, account.password)

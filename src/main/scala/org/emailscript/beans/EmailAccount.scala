@@ -27,6 +27,18 @@ class EmailAccountBean extends AccountBean {
   @BeanProperty var smtpPort: String = "465"
 }
 
+object EmailAccountBean {
+
+  def apply(host: String, user: String, password: String, smtpHost: String): EmailAccountBean = {
+    val bean = new EmailAccountBean
+    bean.setHost(host)
+    bean.setUser(user)
+    bean.setPassword(password)
+    bean.setSmtpHost(smtpHost)
+
+    bean
+  }
+}
 case class EmailAccount(val host: String, val user: String, val password: String, val name: String, val port: Int,
                         smtpHost: String, smtpPort: String = "465") {
 

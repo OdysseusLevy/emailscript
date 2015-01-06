@@ -37,15 +37,18 @@ logger.info ("found ${emails.length} emails")
 
 for ( email in emails) {
     increment(counts, email)
-    logger.info("from ${email.from()} subject: ${email.subject()} counts: ${counts[email.from()]}")
 }
 
 def sorted = counts.sort {-it.value.count} //sort from highest to lowest
-def result = Template.execute("table.ms", [folder: folder, size: emails.size(), counts:sorted.values()])
+sorted = sorted.values().toList()
+
+def result = sorted.size() > 200 ? sorted : sorted[0..199] // truncate if too large
+
+def html = Template.execute("table.ms", [folder: folder, size: emails.size(), counts: result])
 
 def mail = MyEmail.newMail()
 mail.setSubject("Counts")
-mail.setHtml(result)
+mail.setHtml(html)
 mail.setTo("me@mymail.com")
 
 MyEmail.send(mail)

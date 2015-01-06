@@ -74,6 +74,15 @@ class GoogleContactsBean extends AccountBean {
   @BeanProperty var password: String = ""
 }
 
+object GoogleContactsBean {
+  def apply(account: String, password: String): GoogleContactsBean = {
+    val bean = new GoogleContactsBean()
+    bean.setAccount(account)
+    bean.setPassword(password)
+    bean
+  }
+}
+
 object GoogleContacts {
 
   val appName = "emailscript.org"

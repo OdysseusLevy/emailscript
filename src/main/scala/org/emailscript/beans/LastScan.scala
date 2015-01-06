@@ -14,3 +14,13 @@ class LastScan {
 
   override def toString(): String = {s"lastId: ${lastId} start: ${start} stop:${stop}"}
 }
+
+object LastScan {
+  def apply(start: Date, stop: Date, lastId: Long): LastScan = {
+    val bean = new LastScan
+    bean.setStart(start)
+    bean.setStop(stop)
+    bean.setLastId(lastId)
+    bean
+  }
+}

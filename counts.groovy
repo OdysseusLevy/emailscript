@@ -18,8 +18,9 @@ class Count {
     def String toString() {" count: ${count} read: ${read}"}
 }
 
-def folder = "@SaneArchive"
-def emails = cosmosgame.getEmails(folder)
+def folder = "Inbox"
+def emails = olevy.getEmails(folder)
+
 def counts = [:]
 
 def increment(counts, email) {
@@ -34,20 +35,23 @@ def increment(counts, email) {
 println ("found ${emails.length} emails")
 
 for ( email in emails) {
-    logger.info("from ${email.from()} subject: ${email.subject()}")
+    //logger.info("from ${email.from()} subject: ${email.subject()}")
     increment(counts, email)
 }
 
 def sorted = counts.sort {-it.value.count}
+def result = sorted.values().toList()
 
-sorted.forEach{ k,v -> println("$k count: $v.count read: $v.read size: $v.size percentRead: ${v.percentRead()} isFriend: ${v.isFriend}")}
+if (result.size() > 200) {
+    logger.info("truncating to 200")
+    result = result[0..199]
+}
 
-def result = Template.execute("table.ms", [folder: folder, size: emails.size(), counts:sorted.values()])
-println result
+def html = Template.execute("table.ms", [folder: folder, size: emails.size(), counts:result])
 
 def mail = cosmosgame.newMail()
 mail.setSubject("Counts")
-mail.setHtml(result)
+mail.setHtml(html)
 mail.setFrom("Odysseus The Legend", "odysseus@cosmosgame.org")
 mail.setTo("Odysseus The Man", "odysseus@cosmosgame.org")
 
