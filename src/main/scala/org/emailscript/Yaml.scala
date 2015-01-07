@@ -36,7 +36,6 @@ class Yaml(val dataDir: File, var dataFiles: Map[String,File]) {
     }
 
     Yaml.saveToFile(data, dataFiles(dataName))
-
   }
 }
 
@@ -94,13 +93,11 @@ object Yaml {
   }
 
   def save(data: AnyRef, writer: Writer) = {
-    val yaml = createYaml()
     yaml.dump(data, writer)
   }
 
   def saveToFile(data: AnyRef, file: File) = {
 
-    val yaml = createYaml()
     val writer = new FileWriter((file))
     try {
       save(data, writer)
@@ -118,8 +115,6 @@ object Yaml {
 
     dataDir.listFiles(filter).map(file => file.getName -> file).toMap
   }
-
-
 
   def main(args: Array[String]) {
 

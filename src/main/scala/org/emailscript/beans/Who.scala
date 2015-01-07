@@ -1,6 +1,6 @@
 package org.emailscript.beans
 
-import javax.mail.{Message, Address}
+import javax.mail.{Address}
 import javax.mail.internet.InternetAddress
 import org.emailscript.{MailMessage, Values, Tags}
 
@@ -39,10 +39,13 @@ class Who {
   def removeTag(tag: String) = Tags.removeTag(this, tag)
   def getTags(): Set[String]= Tags.getTags(this)
 
-  //TODO do proper validation
   def isValid(): Boolean = {
-    val index = email.lastIndexOf('@')
-    index > 0 && index < (email.length -3)
+    try{
+      toAddress().validate()
+      return true
+    } catch {
+      case e: Throwable => return false
+    }
   }
 
   override def hashCode() = {email.hashCode}
@@ -56,7 +59,7 @@ class Who {
 
   override def toString = {s"$name<$email>"}
 
-  def toAddress():Address = new InternetAddress(email, name)
+  def toAddress():InternetAddress = new InternetAddress(email, name)
 }
 
 object Who {

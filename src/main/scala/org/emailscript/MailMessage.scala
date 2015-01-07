@@ -2,7 +2,7 @@ package org.emailscript
 
 import java.io.ByteArrayOutputStream
 import java.net.URL
-import java.util.Date
+import java.time.{Instant, Duration}
 import javax.mail.Message.RecipientType
 import javax.mail._
 
@@ -69,14 +69,12 @@ class MailMessage(val message: IMAPMessage, dnsbl: DnsblLookup = MailMessage.Def
   // Time stuff
   //
 
-  //TODO redo these using Java 1.8 date utils
+  lazy val received = message.getReceivedDate.toInstant
+  lazy val messageAge = Duration.between(received, Instant.now())
 
-  lazy val received: Date = message.getReceivedDate
-  lazy val ageInMillis = System.currentTimeMillis() - received.getTime
-
-  lazy val weeksAgo: Long = ageInMillis / millisInWeek
-  lazy val daysAgo: Long =  ageInMillis / millisInDay
-  lazy val hoursAgo: Long = ageInMillis / millisInHour
+  lazy val weeksAgo: Long = messageAge.toDays / 7
+  lazy val daysAgo: Long =  messageAge.toDays
+  lazy val hoursAgo: Long = messageAge.toHours
 
   //
   // Headers

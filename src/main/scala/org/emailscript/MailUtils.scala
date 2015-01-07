@@ -195,31 +195,40 @@ object MailUtils {
   }
 
   def doCallback(dataName: String, folder: IMAPFolder, callback: ScriptCallback): Unit = {
-    val lastScan = yaml.getOrElse(dataName, () => new LastScan)
-    logger.info(s" checking for emails in ${folder.getName}; last scan: $lastScan")
-    lastScan.start = new Date()
 
-    val emails = getEmailsAfter(folder, lastScan.lastId)
-    if (emails.length == 0) {
-      logger.info(s"No emails found in ${folder.getName}")
-    }
-    else {
-      logger.info(s"${emails.size} new email(s) found in ${folder.getName}")
+    try {
 
-      try {
-        callback.callback(emails)
+      val lastScan = yaml.getOrElse(dataName, () => new LastScan)
+      logger.info(s" checking for emails in ${folder.getName}; last scan: $lastScan")
+
+      val emails = getEmailsAfter(folder, lastScan.lastId)
+      if (emails.length == 0) {
+        logger.info(s"No emails found in ${folder.getName}")
       }
-      catch {
-        case e: Throwable => throw new Exception("Error running callback", e)
+      else {
+        logger.info(s"${emails.size} new email(s) found in ${folder.getName}")
+
+        try {
+          callback.callback(emails)
+        }
+        catch {
+          case e: Throwable => logger.error("Error when calling callback script", e)
+        }
+
+        Tags.save()
+        Values.save()
+        MailUtils.expunge(folder)
+
+        lastScan.stop = new Date()
+        lastScan.lastId = emails.last.uid
+        yaml.set(dataName, lastScan)
       }
-
-      Tags.save()
-      Values.save()
-      MailUtils.expunge(folder)
-
-      lastScan.stop = new Date()
-      lastScan.lastId = emails.last.uid
-      yaml.set(dataName, lastScan)
+    } catch {
+      case e: Throwable => {
+        val text = "System Error running callback"
+        logger.error(text, e);
+        throw new RuntimeException(text, e)
+      }
     }
   }
 

@@ -27,8 +27,9 @@ class YamlTest extends FlatSpec with Matchers {
     val account = EmailAccountBean("host1", "user1", "password1", "smtpHost1")
     val gContacts = GoogleContactsBean("account1", "password1")
 
-    val startDate = new Date(123)
-    val stopDate = new Date(1234)
+    val startDate = new Date()
+    val stopDate = new Date(startDate.getTime + 2000)
+
     val lastScan = LastScan(startDate, stopDate, 333L)
 
     val whoResult = roundTrip[Who](who, Yaml.WhoTag)
