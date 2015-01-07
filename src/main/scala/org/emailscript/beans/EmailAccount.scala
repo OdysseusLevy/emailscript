@@ -58,6 +58,8 @@ case class EmailAccount(val host: String, val user: String, val password: String
   def scanFolder(folderName: String, scanner: ScriptCallback): Unit = MailUtils.scanFolder(this, folderName, scanner)
   def readLatest(folderName: String, callback: ScriptCallback): Unit = MailUtils.readLatest(this, folderName, callback)
 
+  def getEmails(): Array[MailMessage] = getEmails("Inbox", 0)
+  def getEmails(limit: Int): Array[MailMessage] = getEmails("Inbox", limit)
   def getEmails(folderName: String): Array[MailMessage] = getEmails(folderName, 0)
   def getEmailsAfter(folderName: String, startUID: java.lang.Long): Array[MailMessage] = {
     MailUtils.getEmailsAfter(this, folderName, startUID)
@@ -75,7 +77,5 @@ case class EmailAccount(val host: String, val user: String, val password: String
     bean.setSmtpHost(smtpHost)
     bean
   }
-
-
 
 }
