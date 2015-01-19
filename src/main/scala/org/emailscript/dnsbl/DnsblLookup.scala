@@ -1,4 +1,4 @@
-package org.emailscript.url
+package org.emailscript.dnsbl
 
 import org.slf4j.LoggerFactory
 import org.xbill.DNS._

@@ -1,14 +1,14 @@
-package org.emailscript.beans
+package org.emailscript.api
 
-import javax.mail.{Session, Message}
 import javax.mail.internet.MimeMessage
+import javax.mail.{Message, Session}
 
-import org.emailscript.MailUtils
+import org.emailscript.mail.MailUtils
 
 import scala.beans.BeanProperty
 
 /**
- * Represent a simple email message
+ * Use this to send email messages
  */
 class EmailBean {
   @BeanProperty var subject: String = ""
@@ -35,8 +35,10 @@ class EmailBean {
 object EmailBean {
   def apply(user: String) = {
     val bean = new EmailBean()
-    if (MailUtils.isValidEmail(user))
+    if (MailUtils.isValidEmail(user)) {
+      bean.to = Who("", user)
       bean.from = Who("", user)
+    }
     bean
   }
 }

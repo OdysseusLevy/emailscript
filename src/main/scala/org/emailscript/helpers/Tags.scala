@@ -1,10 +1,10 @@
-package org.emailscript
+package org.emailscript.helpers
 
 import java.util
 import java.util.function.BiFunction
 
 import com.google.common.base.Strings
-import org.emailscript.beans.Who
+import org.emailscript.api.Who
 
 import scala.collection.JavaConverters._
 

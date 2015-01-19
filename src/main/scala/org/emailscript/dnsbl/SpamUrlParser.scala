@@ -1,4 +1,4 @@
-package org.emailscript.url
+package org.emailscript.dnsbl
 
 import java.net.URL
 
@@ -68,7 +68,7 @@ object SpamUrlParser {
     val suspectUrls = urls.filterNot(okToSkip)
     for(url <- suspectUrls) {
 
-      logger.debug("checking url: {}", url)
+      logger.debug("checking dnsbl: {}", url)
       val record = dnsbl.checkDNBSL(url.getHost)
       if (record != DnsblResult.empty)
         return record

@@ -1,4 +1,4 @@
-package org.emailscript.url
+package org.emailscript.dnsbl
 
 object SpamHausDnsbl {
   val SpamHausHost = "dbl.spamhaus.org"

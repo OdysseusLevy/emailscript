@@ -1,21 +1,22 @@
-package org.emailscript
+package org.emailscript.mail
 
 import java.util.{Date, Properties}
 import javax.mail.Flags.Flag
 import javax.mail._
 import javax.mail.internet.{InternetAddress, MimeMessage}
+import javax.mail.search.{ComparisonTerm, ReceivedDateTerm}
 
-import com.sun.mail.imap.{IMAPMessage, IMAPFolder}
+import com.sun.mail.imap.{IMAPFolder, IMAPMessage}
 import com.sun.mail.pop3.POP3Folder
-import org.emailscript.beans.{EmailBean, EmailAccount, LastScan}
+import org.emailscript.api._
+import org.emailscript.helpers.{Yaml, Values, Tags}
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.HashMap
 
-trait ScriptCallback{
-  def callback(emails: Array[MailMessage]): Unit
-}
-
+/**
+ * Basic mail handling utilities using javax.mail
+ */
 object MailUtils {
 
   val yaml = Yaml()
@@ -39,23 +40,29 @@ object MailUtils {
   def sendMessage(account: EmailAccount, messageBean: EmailBean) = {
 
     logger.info(s"sending email to ${messageBean.getTo}")
-    val session = Session.getInstance(account.toSmtpProperties())
+    val session = Session.getInstance(EmailAccount.toSmtpProperties(account))
     val message = messageBean.toMessage(session)
-    Transport.send(message, account.user, account.password)
+    Transport.send(message, account.getUser, account.getPassword)
   }
 
-  def openFolder(folder: Folder, permissions: Int = defaultPermissions) = {
-    folder.open(defaultPermissions)
-    folders += (folder.getFullName -> folder)
+  private def openFolder(folder: Folder, permissions: Int = defaultPermissions) = {
+    try {
+      folder.open(defaultPermissions)
+      folders += (folder.getFullName -> folder)
+    } catch {
+      case e: Throwable => logger.error(s"Error trying to open ${folder.getFullName}", e); throw e
+    }
   }
 
-  def openFolder(store: Store, folderName: String): Folder = {
+  private def openFolder(store: Store, folderName: String): Folder = {
     val folder = store.getFolder(folderName)
     openFolder(folder)
     folder
   }
 
-  def getFolder(store: Store, folderName: String): Folder = {
+  def getFolder(account: EmailAccount, store: Store, name: String): Folder = {
+
+    val folderName = account.getFolderName(name)
     if(folders.contains(folderName))
       folders(folderName)
     else
@@ -64,18 +71,18 @@ object MailUtils {
 
   def openFolder(account: EmailAccount, folderName: String): Folder = {
     val store = getStore(account)
-    openFolder(store, folderName)
+    openFolder(store, account.getFolderName(folderName))
   }
 
   def readLatest(account: EmailAccount, folderName: String, callback: ScriptCallback): Unit = {
     val folder = openFolder(account, folderName)
     val dataName = folderName + "LastRead"
-    doCallback(dataName, folder.asInstanceOf[IMAPFolder], callback)
+    doCallback(account, dataName, folder.asInstanceOf[IMAPFolder], callback)
   }
 
   def scanFolder(account: EmailAccount, folderName: String, callback: ScriptCallback): Unit = {
     val mailFolder = openFolder(account, folderName)
-    ImapFolderScanner.scanFolder(mailFolder.asInstanceOf[IMAPFolder], callback)
+    ImapFolderScanner.scanFolder(account, mailFolder.asInstanceOf[IMAPFolder], callback)
   }
 
   def fetch(messages: Array[Message], folder: Folder) = {
@@ -84,8 +91,33 @@ object MailUtils {
     fp.add(FetchProfile.Item.ENVELOPE)
     fp.add(FetchProfile.Item.FLAGS)
     fp.add(FetchProfile.Item.SIZE)
+    fp.add(MoveHeader)
+
     folder.fetch(messages,fp)
     logger.info(s"finishing fetch for ${folder.getName()}")
+  }
+
+  def convertMessages(account: EmailAccount, messages: Array[Message], folder: Folder) = {
+    fetch(messages, folder)
+    messages.map { case m:IMAPMessage => MailMessage(new MailMessageHelper(account, m))}
+  }
+
+  def getEmailsBefore(account: EmailAccount, folderName: String, date: java.util.Date) = {
+    val olderThan = new ReceivedDateTerm(ComparisonTerm.LT, date)
+
+    val folder = openFolder(account, folderName)
+    val emails = folder.search(olderThan)
+
+    convertMessages(account, emails, folder)
+  }
+
+  def getEmailsAfter(account: EmailAccount, folderName: String, date: java.util.Date) = {
+    val newerThan = new ReceivedDateTerm(ComparisonTerm.GT, date)
+
+    val folder = openFolder(account, folderName)
+    val emails = folder.search(newerThan)
+
+    convertMessages(account, emails, folder)
   }
 
   def getEmails(account: EmailAccount, folderName: String, limit:Int = 0): Array[MailMessage] = {
@@ -95,16 +127,15 @@ object MailUtils {
     val count = mailFolder.getMessageCount
 
     val messages = mailFolder.getMessages(start, count)
-    fetch(messages, mailFolder)
-    messages.map { case m:IMAPMessage => new MailMessage(m)}
+    convertMessages(account, messages, mailFolder)
   }
 
   def getEmailsAfter(account: EmailAccount, folderName: String, startUID: java.lang.Long): Array[MailMessage] = {
     val folder = openFolder(account, folderName).asInstanceOf[IMAPFolder]
-    getEmailsAfter(folder, startUID)
+    getEmailsAfter(account, folder, startUID)
   }
 
-  def getEmailsAfter(folder: IMAPFolder, startUID: java.lang.Long): Array[MailMessage]  = {
+  def getEmailsAfter(account: EmailAccount, folder: IMAPFolder, startUID: java.lang.Long): Array[MailMessage]  = {
     val start: Long  =  if (startUID == null || startUID < 0) 0  else startUID
     val messages = folder.getMessagesByUID(start + 1, UIDFolder.LASTUID)
 
@@ -112,19 +143,19 @@ object MailUtils {
 
     // Get rid of final message (JavaMail insists on including the very last message when using LASTUID)
     val filtered = messages.filter{ m: Message => m.getFolder.asInstanceOf[UIDFolder].getUID(m) > start }
-    filtered.map { case m:IMAPMessage => new MailMessage(m)}
+    filtered.map { case m:IMAPMessage => MailMessage(new MailMessageHelper(account, m))}
   }
 
-  def moveTo(toFolderName: String, m: MailMessage) {
+  def moveTo(toFolderName: String, m: MailMessageHelper) {
 
     if (dryRun) {
-      logger.info(s"DRY RUN -- moving message from: ${m.from} subject: ${m.subject} to folder: ${toFolderName}")
+      logger.info(s"DRY RUN -- moving message from: ${m.from} subject: ${m.subject} to folder: $toFolderName")
       return
     }
 
     val fromFolder: Folder = m.message.getFolder
     val store = fromFolder.getStore
-    val toFolder = getFolder(store, toFolderName)
+    val toFolder = getFolder(m.account, store, toFolderName)
 
     if (!toFolder.isOpen)
       openFolder(toFolder, Folder.READ_WRITE)
@@ -135,7 +166,7 @@ object MailUtils {
     newMessage.addHeader(MoveHeader, toFolderName)
 
     val messageArray: Array[Message] = Array(newMessage)
-    logger.info(s"moving mail from: ${m.from} subject: ${m.subject} to folder: ${toFolderName}")
+    logger.info(s"moving mail from: ${m.from} subject: ${m.subject} to folder: $toFolderName")
     toFolder.appendMessages(messageArray)
     m.message.setFlag(Flag.DELETED, true)
   }
@@ -143,7 +174,7 @@ object MailUtils {
   protected def connect(account: EmailAccount): Store = {
     val session: Session = Session.getDefaultInstance(new Properties(), null)
     val store = session.getStore("imaps") //For now at least, only support ssl connections
-    store.connect(account.host, account.user, account.password)
+    store.connect(account.getImapHost, account.getUser, account.getPassword)
     accounts = accounts + (account -> store)
     store
   }
@@ -156,15 +187,19 @@ object MailUtils {
   def close(): Unit = {
 
     if (ImapFolderScanner.isDone){
+      logger.info(s"closing connections")
+
       val expunge = !dryRun
 
       folders.values.foreach( (folder: Folder) => if (folder.isOpen) folder.close(expunge))
       accounts.values.foreach(_.close())
+    } else {
+      logger.info("Exiting main program, but scanning threads are still running")
     }
 
   }
 
-  def delete(permanent: Boolean, m: MailMessage): Unit = {
+  def delete(permanent: Boolean, m: MailMessageHelper): Unit = {
 
     if (dryRun) {
       logger.info(s"DRY RUN -- deleting message from: ${m.from} subject: ${m.subject}")
@@ -174,7 +209,7 @@ object MailUtils {
     if (permanent)
       m.message.setFlag(Flag.DELETED, true)
     else
-      moveTo("Trash", m)
+      moveTo(m.account.Trash, m)
   }
 
   def getUID(folder: Folder, m: Message): Long = {
@@ -194,12 +229,27 @@ object MailUtils {
     }
   }
 
-  def doCallback(dataName: String, folder: IMAPFolder, callback: ScriptCallback): Unit = {
+  def getFolders(account: EmailAccount): Array[Folder] = {
+      getStore(account).getDefaultFolder.list("*").filter{
+        f => (f.getType & javax.mail.Folder.HOLDS_MESSAGES) != 0
+      }
+  }
+
+  def getFolderNames(account: EmailAccount): Array[String] = {
+    getFolders(account).map(_.getFullName)
+  }
+
+  def hasFolder(account: EmailAccount, name: String): Boolean = {
+    val folderName = account.getFolderName(name)
+    getStore(account).getFolder(folderName).exists()
+  }
+
+  def doCallback(account: EmailAccount, dataName: String, folder: IMAPFolder, callback: ScriptCallback): Unit = {
     val lastScan = yaml.getOrElse(dataName, () => new LastScan)
     logger.info(s" checking for emails in ${folder.getName}; last scan: $lastScan")
     lastScan.start = new Date()
 
-    val emails = getEmailsAfter(folder, lastScan.lastId)
+    val emails = getEmailsAfter(account, folder, lastScan.lastId)
     if (emails.length == 0) {
       logger.info(s"No emails found in ${folder.getName}")
     }
@@ -218,14 +268,14 @@ object MailUtils {
       MailUtils.expunge(folder)
 
       lastScan.stop = new Date()
-      lastScan.lastId = emails.last.uid
+      lastScan.lastId = emails.last.getUid
       yaml.set(dataName, lastScan)
     }
   }
 
   def dumpStructure(part: Part, prefix: String = ""): Unit ={
 
-    logger.info(s"${prefix}${part.getContentType()}")
+    logger.info(s"$prefix${part.getContentType()}")
 
     if (part.isMimeType("multipart/*")){
       val multi = part.getContent.asInstanceOf[Multipart]
@@ -249,31 +299,28 @@ object MailUtils {
         return result
     }
 
-    return None
+    None
   }
 
     /**
-     * Simplified algorithm for extracting a messages text. When presented with alternatives it will always
-     * choose the 'preferred' format (which means html)
+     * Simplified algorithm for extracting a message's text. When presented with alternatives it will always
+     * choose the 'preferred' format (which turns out to be html)
      *
      * Note that with complicated formats (such as lots of attachments with text interspersed between them) it will
      * simply return the first text block it finds
      *
-      * @param part
      * @return null if no text is found
      */
   def getBodyText(part: Part): Option[String] = {
 
     part.getContent match {
       case text: String => Option(text)
-      case multi: Multipart => {
+      case multi: Multipart =>
         if (part.isMimeType("multipart/alternative"))
           getBodyText(multi.getBodyPart(multi.getCount -1)) // the last one is the 'preferred' version
          else
           getMultiPartText(multi)
-      }
       case _ => None
     }
   }
 }
-

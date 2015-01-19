@@ -1,14 +1,15 @@
-package org.emailscript
+package org.emailscript.helpers
 
 import java.io._
-import scala.collection.JavaConverters._
 
-import org.emailscript.beans.{LastScan, Who, GoogleContactsBean, EmailAccountBean}
+import org.emailscript.api.{GoogleContacts, LastScan, Who, EmailAccount}
 import org.yaml.snakeyaml
 import org.yaml.snakeyaml.constructor.{Construct, Constructor}
-import org.yaml.snakeyaml.nodes.{ScalarNode, Node, Tag}
+import org.yaml.snakeyaml.nodes.{Node, ScalarNode, Tag}
 import org.yaml.snakeyaml.representer.{Represent, Representer}
 import org.yaml.snakeyaml.{DumperOptions, TypeDescription}
+
+import scala.collection.JavaConverters._
 
 /**
  * Responsible for loading and storing yaml based data
@@ -21,7 +22,7 @@ class Yaml(val dataDir: File, var dataFiles: Map[String,File]) {
     if(!dataFiles.contains(dataName))
       return callback()
 
-    Yaml.readFromFile(dataFiles(dataName)).getOrElse(callback())
+    Yaml.readFromFile(dataFiles(dataName)).getOrElse(callback()).asInstanceOf[T]
   }
 
   def set(name: String, data: AnyRef) {
@@ -30,7 +31,7 @@ class Yaml(val dataDir: File, var dataFiles: Map[String,File]) {
     if(!dataFiles.contains(dataName)) {
       val dataFile = new File(dataDir, dataName)
       if(!dataFile.createNewFile())
-        throw new Exception(s"Can not create file ${dataName} in directory: ${dataDir.getName}")
+        throw new Exception(s"Can not create file $dataName in directory: ${dataDir.getName}")
 
       dataFiles = dataFiles + (dataName -> dataFile)
     }
@@ -53,8 +54,8 @@ object Yaml {
 
   val tagMap = Map(
     WhoTag -> classOf[Who],
-    EmailAccountTag -> classOf[EmailAccountBean],
-    GoogleContactsTag -> classOf[GoogleContactsBean],
+    EmailAccountTag -> classOf[EmailAccount],
+    GoogleContactsTag -> classOf[GoogleContacts],
     LastScanTag -> classOf[LastScan]
   )
 
@@ -65,11 +66,11 @@ object Yaml {
 
   def apply(dirName: String = defaultDataDirName) = new Yaml(new File(dirName), getDataFiles(new File(defaultDataDirName)))
 
-  def read[T](reader: Reader) = {
-    Option(yaml.load(reader).asInstanceOf[T])
+  def read(reader: Reader): Option[AnyRef] = {
+    Option(yaml.load(reader))
   }
 
-  def readFromFile[T](file: File): Option[T] = {
+  def readFromFile(file: File): Option[AnyRef] = {
     val reader = new FileReader(file)
 
     try {
@@ -100,8 +101,7 @@ object Yaml {
 
   def saveToFile(data: AnyRef, file: File) = {
 
-    val yaml = createYaml()
-    val writer = new FileWriter((file))
+    val writer = new FileWriter(file)
     try {
       save(data, writer)
     } finally {
@@ -141,8 +141,7 @@ object Yaml {
   }
 
   val constructor = new Constructor {
-    this.yamlConstructors.put(WhoTag, new WhoConstruct);
-
+    this.yamlConstructors.put(WhoTag, new WhoConstruct)
     class WhoConstruct() extends Construct {
       override def construct(node: Node): AnyRef = {
         val whoText = constructScalar(node.asInstanceOf[ScalarNode])

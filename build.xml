@@ -9,8 +9,11 @@
     <!-- Compiler settings -->
     <property name="jvm-target" value="jvm-1.7"/>
 
-    <!-- Paths -->
+    <!-- Properties -->
+    <property name="version" value="0.2.0"/>
     <property name="src.dir" location="${basedir}/src/main"/>
+    <property name="src.scala.dir" location="${src.dir}/scala/org/emailscript"/>
+    <property name="doc.dir" location="${basedir}/docs"/>
     <property name="java.src.dir" location="${src.dir}/java" />
     <property name="scala.src.dir" location="${src.dir}/scala" />
     <property name="resource.dir" location="${src.dir}/resources" />
@@ -25,6 +28,10 @@
         <pathelement location="${scala.lib.dir}/scala-library.jar"/>
         <fileset dir="${lib.dir}"> <include name="*.jar" /> </fileset>
         <fileset dir="${cls.build.dir}"/>
+    </path>
+
+    <path id="doc.src.dir">
+        <fileset dir="${src.scala.dir}/beans" />
     </path>
 
     <!-- Scala compiler task -->
@@ -44,6 +51,7 @@
     <target name="clean">
         <delete dir="${dist.dir}"/>
         <delete dir="${build.dir}"/>
+        <delete dir="${doc.dir}"/>
     </target>
 
     <target name="compile" depends="clean">
@@ -78,9 +86,24 @@
         </one-jar>
     </target>
 
+    <target name="docs" >
+        <mkdir dir="${doc.dir}"   />
+        <scaladoc
+                skippackages="org.emailscript.dnsbl:org.emailscript.mail:org.emailscript.helpers"
+                srcdir="${src.dir}"
+                destdir="${doc.dir}"
+                deprecation="yes" unchecked="yes"
+                docrootcontent="${basedir}/README.md"
+                doctitle="&lt;div&gt;EmailScript ${version}&lt;/div&gt;"
+                groups="yes"
+                classpathref="compile.classpath">
+            <include name="scala/**/*.scala" />
+        </scaladoc>
+    </target>
+
     <target name="distribution" depends="package">
 
-        <zip destfile="${dist.dir}/emailscript.zip">
+        <zip destfile="${dist.dir}/emailscript.zip" >
             <fileset dir="samples"/>
             <fileset dir="${dist.dir}" includes="emailscript.jar"/>
         </zip>

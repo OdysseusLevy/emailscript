@@ -1,5 +1,6 @@
 package org.emailscript
 
+import org.emailscript.mail.MailUtils
 import org.scalatest.{Matchers, FlatSpec}
 
 class MailUtilsTest extends FlatSpec with Matchers  {

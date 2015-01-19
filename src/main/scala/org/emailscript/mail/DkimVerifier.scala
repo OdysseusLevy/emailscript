@@ -1,4 +1,4 @@
-package org.emailscript
+package org.emailscript.mail
 
 import badpenguin.dkim.{DkimSignature, NSKeyStore}
 import org.slf4j.LoggerFactory
@@ -19,7 +19,7 @@ object DkimVerifier {
   val DkimHeader = "Dkim-Signature"
 
   val logger = LoggerFactory.getLogger(getClass)
-  val keyStore = new NSKeyStore("dns", "8.8.8.8")
+  val keyStore = new NSKeyStore("dns", "8.8.8.8") //This is one of Google's DNS servers
 
   private def getDnsHeaders(signature: DkimSignature): Option[String] = {
     val lookup = new Lookup(signature.getDnsRecord, Type.TXT)
@@ -38,7 +38,7 @@ object DkimVerifier {
    * @param message
    * @return
    */
-  def verifiedHost(message: MailMessage):Option[String] = {
+  def verifiedHost(message: MailMessageHelper):Option[String] = {
     val header = message.getHeader(DkimHeader)
     val signature:Option[DkimSignature] = header.map{text: String => new DkimSignature(DkimHeader + ":" + text, true)}
     val dnsHeaders =  signature.flatMap(getDnsHeaders(_))

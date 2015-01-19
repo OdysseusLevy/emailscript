@@ -1,4 +1,4 @@
-package org.emailscript.beans
+package org.emailscript.api
 
 import java.util.Date
 
@@ -8,7 +8,7 @@ import scala.beans.BeanProperty
  * Used to track time an inbox was scanned
  */
 class LastScan {
-  @BeanProperty var start: Date = new Date() //TODO switch to Java 8 dates
+  @BeanProperty var start: Date = new Date()
   @BeanProperty var stop: Date = null
   @BeanProperty var lastId:Long = 0
 

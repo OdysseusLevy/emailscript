@@ -1,10 +1,9 @@
-package org.emailscript
+package org.emailscript.helpers
 
 import java.io.{File, FileReader}
 import javax.script.ScriptEngineManager
 
 import com.google.common.io.Files
-import org.cosmosgame.mailscript.Configuration
 import org.slf4j.LoggerFactory
 
 /**
@@ -28,8 +27,8 @@ object ScriptHelper {
 
     logger.info(s"Executing ${script.getName} with engine ${engineName}")
 
-    val engineManager = new ScriptEngineManager();
-    val engine = engineManager.getEngineByName(engineName);
+    val engineManager = new ScriptEngineManager()
+    val engine = engineManager.getEngineByName(engineName)
     val scope = engine.createBindings()
 
     Configuration.addObjects(scope)
