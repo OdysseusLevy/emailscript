@@ -11,6 +11,7 @@
 
     <!-- Properties -->
     <property name="version" value="0.2.0"/>
+    <property name="distribution" value="emailscript-${version}"/>
     <property name="src.dir" location="${basedir}/src/main"/>
     <property name="src.scala.dir" location="${src.dir}/scala/org/emailscript"/>
     <property name="doc.dir" location="${basedir}/docs"/>
@@ -103,10 +104,10 @@
 
     <target name="distribution" depends="package,docs">
 
-        <zip destfile="${dist.dir}/emailscript.zip" >
-            <zipfileset dir="samples" prefix="emailscript"/>
-            <zipfileset dir="${doc.dir}" prefix="emailscript/docs"/>
-            <zipfileset dir="${dist.dir}" includes="emailscript.jar" prefix="emailscript"/>
+        <zip destfile="${dist.dir}/${distribution}.zip" >
+            <zipfileset dir="samples" prefix="${distribution}"/>
+            <zipfileset dir="${doc.dir}" prefix="${distribution}/docs"/>
+            <zipfileset dir="${dist.dir}" includes="emailscript.jar" prefix="${distribution}"/>
         </zip>
 
     </target>

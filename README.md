@@ -1,14 +1,17 @@
-==emailscript==
-=====
+#Emailscript
 
 Hack your inbox! Run scripts to manage your mail.
 Use your choice of javascript, groovy, or ruby to run against your email account.
 
-==Objects==
-[[org.emailscript.api.EmailAccount EmailAccount]]
+##Features
 
-[[org.emailscript.api.MailMessage MailMessage]]
+* Efficiently read emails from your inbox
+* Move, delete emails
+* Send emails using mustache templates
+* Continously scan folders, to instantly handle emails as they come in
+* Supports javascript, groovy, or ruby
 
-[[org.emailscript.api.Template Template]]
+##Versions
 
-[[org.emailscript.api.GoogleContacts GoogleContacts]]
+* 0.2.0 1/19/2015 Samples, Documentation
+* 0.1.0 Initial Release
