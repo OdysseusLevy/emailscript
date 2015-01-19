@@ -9,6 +9,28 @@ import com.google.gdata.data.extensions.{Email, FullName, Name}
 import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
+/**
+ * Simple GoogleContacts api.
+ * Only works with Google Contacts. Does not yet work with Google+ circles
+ *
+ * ==Features==
+ *
+ *  - Get all of your google contacts
+ *  - Determine what groups your contact belongs to
+ *  - Add new contacts
+ *
+ * ==Configuration==
+ *
+ * When running from the command line you set up access to your google account by adding a .yml file to the config
+ * directory
+ * {{{
+ * !GoogleContacts
+ * account: <myaccount@gmail.com>
+ * password: <mypassword>
+ * }}}
+ *
+ */
+
 case class GoogleContact (groups: Set[String], emails: Set[String], title: String, groupEntries: Iterable[GroupMembershipInfo])
 
 object GoogleContact {

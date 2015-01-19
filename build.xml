@@ -93,7 +93,7 @@
                 srcdir="${src.dir}"
                 destdir="${doc.dir}"
                 deprecation="yes" unchecked="yes"
-                docrootcontent="${basedir}/README.md"
+                docrootcontent="${basedir}/scaladoc.txt"
                 doctitle="&lt;div&gt;EmailScript ${version}&lt;/div&gt;"
                 groups="yes"
                 classpathref="compile.classpath">
@@ -101,11 +101,12 @@
         </scaladoc>
     </target>
 
-    <target name="distribution" depends="package">
+    <target name="distribution" depends="package,docs">
 
         <zip destfile="${dist.dir}/emailscript.zip" >
-            <fileset dir="samples"/>
-            <fileset dir="${dist.dir}" includes="emailscript.jar"/>
+            <zipfileset dir="samples" prefix="emailscript"/>
+            <zipfileset dir="${doc.dir}" prefix="emailscript/docs"/>
+            <zipfileset dir="${dist.dir}" includes="emailscript.jar" prefix="emailscript"/>
         </zip>
 
     </target>

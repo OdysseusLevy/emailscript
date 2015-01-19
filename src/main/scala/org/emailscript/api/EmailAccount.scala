@@ -14,7 +14,7 @@ import org.emailscript.mail.{MailUtils}
  *
  * ==Configuration==
  *
- * When running from the command line you set up access to your email account by adding a .yml file to the accounts
+ * When running from the command line you set up access to your email account by adding a .yml file to the config
  * directory
  * {{{
  * !EmailAccount
@@ -153,16 +153,17 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
 
   /**
    * Return all emails before a given date
-   * @param date
-   * @return
+   * @param folder folder we are reading
+   * @param date return all emails that are older than this date
+   * @group Functions
    */
   def getEmailsBefore(folder: String, date: java.util.Date) = MailUtils.getEmailsBefore(this, folder, date)
 
   /**
    * Get all emails after a given date
-   * @param folder
-   * @param date
-   * @return
+   * @param folder folder we are reading
+   * @param date return all emails that are newer than this date
+   *@group Functions
    */
   def getEmailsAfter(folder: String, date: Date) = MailUtils.getEmailsAfter(this, folder, date)
 
@@ -194,6 +195,8 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
 
   /**
    * Returns true if this is a gmail account
+   *
+   * @group Functions
    */
   def isGmail() = getUser.endsWith("gmail.com")
 
@@ -204,20 +207,40 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
   /**
    * Returns true if folder exists, false otherwise
    * @param folderName
+   * @group Functions
    */
   def hasFolder(folderName : String): Boolean = MailUtils.hasFolder(this, folderName)
 
   /**
    * Return all of the folder names for this account
+   * @group Functions
    */
   def getFolders(): Array[String] = MailUtils.getFolderNames(this)
 
-  val Trash = if (isGmail) "Deleted Messages" else "Trash"
+}
 
-  private val gmailTopLevelFolders = Set("inbox", "deleted messages", "drafts", "sent", "sent messages")
+object EmailAccount {
 
-  def getFolderName(name: String): String = {
-    if (!isGmail)
+  private val Trash = "Trash"
+  private val GmailTrash = "Deleted Messages"
+
+  def trashFolder(account: EmailAccount): String = {
+    if (account.isGmail())
+      GmailTrash
+    else
+      Trash
+  }
+
+  val gmailTopLevelFolders = Set("inbox", "deleted messages", "drafts", "sent", "sent messages")
+
+  def getFolderName(account: EmailAccount, name: String): String = {
+    if (!account.isGmail)
+      return name
+
+    if (name == Trash)
+      return GmailTrash
+
+    if (name == GmailTrash)
       return name
 
     if (name.startsWith("[") || gmailTopLevelFolders.contains(name.toLowerCase))
@@ -225,9 +248,6 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
 
     "[Gmail]/" + name
   }
-}
-
-object EmailAccount {
 
   def apply(imapHost: String, user: String, password: String, smtpHost: String): EmailAccount = {
     val bean = new EmailAccount

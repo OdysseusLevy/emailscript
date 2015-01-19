@@ -62,7 +62,7 @@ object MailUtils {
 
   def getFolder(account: EmailAccount, store: Store, name: String): Folder = {
 
-    val folderName = account.getFolderName(name)
+    val folderName = EmailAccount.getFolderName(account, name)
     if(folders.contains(folderName))
       folders(folderName)
     else
@@ -71,7 +71,7 @@ object MailUtils {
 
   def openFolder(account: EmailAccount, folderName: String): Folder = {
     val store = getStore(account)
-    openFolder(store, account.getFolderName(folderName))
+    openFolder(store, EmailAccount.getFolderName(account, folderName))
   }
 
   def readLatest(account: EmailAccount, folderName: String, callback: ScriptCallback): Unit = {
@@ -209,7 +209,7 @@ object MailUtils {
     if (permanent)
       m.message.setFlag(Flag.DELETED, true)
     else
-      moveTo(m.account.Trash, m)
+      moveTo(EmailAccount.trashFolder(m.account), m)
   }
 
   def getUID(folder: Folder, m: Message): Long = {
@@ -240,7 +240,7 @@ object MailUtils {
   }
 
   def hasFolder(account: EmailAccount, name: String): Boolean = {
-    val folderName = account.getFolderName(name)
+    val folderName = EmailAccount.getFolderName(account, name)
     getStore(account).getFolder(folderName).exists()
   }
 
