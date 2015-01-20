@@ -3,7 +3,8 @@ package org.emailscript
 import java.io.{StringReader, StringWriter}
 import java.util.Date
 
-import org.emailscript.beans._
+import org.emailscript.api.{GoogleContacts, LastScan, Who, EmailAccount}
+import org.emailscript.helpers.Yaml
 import org.scalatest.{Matchers, FlatSpec}
 import org.yaml.snakeyaml.nodes.Tag
 
@@ -18,14 +19,21 @@ class YamlTest extends FlatSpec with Matchers {
     writer.toString should startWith (tag.getValue)
 
     val reader = new StringReader(writer.toString)
-    Yaml.read[T](reader).get
+    Yaml.read(reader).get.asInstanceOf[T]
   }
 
-  "Yaml Object" should "round trip values of type Who, EmailAccount, GoogleContacts, LastScan" in {
+  "Yaml Object" should "round trip values of type Who, EmailAccountApi, GoogleContacts, LastScan" in {
 
     val who = Who("WhoName", "WhoEmail@test.org")
-    val account = EmailAccountBean("host1", "user1", "password1", "smtpHost1")
-    val gContacts = GoogleContactsBean("account1", "password1")
+    val account = EmailAccount("host1", "user1", "password1", "smtpHost1")
+
+    account should have (
+      'imapHost ("host1"),
+      'user ("user1"),
+      'password ("password1"),
+      'smtpHost ("smtpHost1"))
+
+    val gContacts = GoogleContacts("account1", "password1")
 
     val startDate = new Date()
     val stopDate = new Date(startDate.getTime + 2000)
@@ -33,14 +41,14 @@ class YamlTest extends FlatSpec with Matchers {
     val lastScan = LastScan(startDate, stopDate, 333L)
 
     val whoResult = roundTrip[Who](who, Yaml.WhoTag)
-    val accountResult = roundTrip[EmailAccountBean](account, Yaml.EmailAccountTag)
-    val gContactsResult = roundTrip[GoogleContactsBean](gContacts, Yaml.GoogleContactsTag)
-    val lastscCanResult = roundTrip[LastScan](lastScan, Yaml.LastScanTag)
+    val accountResult = roundTrip[EmailAccount](account, Yaml.EmailAccountTag)
+    val gContactsResult = roundTrip[GoogleContacts](gContacts, Yaml.GoogleContactsTag)
+    val lastScanResult = roundTrip[LastScan](lastScan, Yaml.LastScanTag)
 
     who should be (whoResult)
 
     accountResult should have (
-      'host ("host1"),
+      'imapHost ("host1"),
       'user ("user1"),
       'password ("password1"),
       'smtpHost ("smtpHost1"))
@@ -49,7 +57,7 @@ class YamlTest extends FlatSpec with Matchers {
       'account ("account1"),
       'password ("password1"))
 
-    lastscCanResult should have (
+    lastScanResult should have (
       'start (startDate),
       'stop (stopDate),
       'lastId (333L))

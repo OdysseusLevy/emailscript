@@ -1,10 +1,12 @@
 
 def scanFolder(folder, shouldWhiteList) {
 
-    cosmosgame.scanFolder(folder){ emails ->
+    if (!MyEmail.hasFolder(folder)) {
+        logger.info("Ignoring scanFolder request for $folder")
+        return
+    }
 
-        if (folder == "Growth" && emails.size() > 10)
-            emails = emails[0..10]
+    MyEmail.scanFolder(folder){ emails ->
 
         logger.info("scanning mail in $folder")
         for(email in emails){
@@ -21,16 +23,13 @@ def scanFolder(folder, shouldWhiteList) {
     }
 }
 
-scanFolder("Social", true)
 scanFolder("Notifications", true)
 scanFolder("Newsletters", true)
-scanFolder("Growth", true)
 scanFolder("Archive", true)
-scanFolder("Heartbeat", true)
 scanFolder("Bulk", false)
 scanFolder("Junk", false)
 
-cosmosgame.scanFolder("Sent"){ emails ->
+MyEmail.scanFolder("Sent"){ emails ->
     logger.info("scanning sent emails")
 
     for(email in emails) {
@@ -44,7 +43,7 @@ cosmosgame.scanFolder("Sent"){ emails ->
     }
 }
 
-cosmosgame.scanFolder("Inbox"){emails ->
+MyEmail.scanFolder("Inbox"){emails ->
 
     for(email in emails){
 

@@ -1,6 +1,7 @@
 build
 out
-accounts
+dist
+config
 data
 target
 *.class
