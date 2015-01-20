@@ -14,6 +14,7 @@ Use your choice of javascript, groovy, or ruby to run against your email account
 ##Documentation
 
 [Wiki] (https://github.com/OdysseusLevy/emailscript/wiki)
+
 [Class documentation](http://odysseuslevy.github.io/emailscript/docs/index.html#package)
 
 ##Versions
