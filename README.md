@@ -25,7 +25,7 @@ I would love to get feedback!
 
 Please send me your scripts. I need more samples!
 
-Send your comments/scripts to odysseus<at>cosmosgame.org. Put "Emailscript" somewhere in the subject line.
+Send your comments/scripts to odysseus-at-cosmosgame.org. Put "Emailscript" somewhere in the subject line.
 
 ##Versions
 
