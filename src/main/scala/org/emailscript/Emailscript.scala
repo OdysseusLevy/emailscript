@@ -50,13 +50,11 @@ object Emailscript {
       val scriptName = if (args.length == 0) "main.groovy" else args(args.length - 1)
       val script = new File(scriptName)
       if (!script.exists) {
-        throw new Exception(s"{script.getName} not found! Usage: ${usage}")
+        throw new Exception(s"${script.getName} not found! Usage: ${usage}")
       }
 
       // Configure our logger to output to <scriptName>.log (see logback.xml config file)
       MDC.put("script", Files.getNameWithoutExtension(scriptName))
-
-
 
       val result = ScriptHelper.runScript(script)
 

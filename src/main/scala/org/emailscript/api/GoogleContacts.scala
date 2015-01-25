@@ -7,6 +7,7 @@ import com.google.gdata.data.PlainTextConstruct
 import com.google.gdata.data.contacts.{GroupMembershipInfo, ContactEntry, ContactFeed, ContactGroupFeed}
 import com.google.gdata.data.extensions.{Email, FullName, Name}
 import org.slf4j.LoggerFactory
+import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
 
 /**
@@ -31,7 +32,14 @@ import scala.collection.JavaConverters._
  *
  */
 
-case class GoogleContact (groups: Set[String], emails: Set[String], title: String, groupEntries: Iterable[GroupMembershipInfo])
+class GoogleContact (
+  @BeanProperty val emails: java.util.Set[String],
+  @BeanProperty val name: String,
+  @BeanProperty val groups: java.util.Set[String],
+  private val groupEntries: Iterable[GroupMembershipInfo]) {
+
+  override def toString() = s"name: $name emails: ${emails.toString}, groups: ${groups.toString}"
+}
 
 object GoogleContact {
 
@@ -40,7 +48,7 @@ object GoogleContact {
     val groups: Set[String] = contactEntry.getGroupMembershipInfos.asScala.map { g => groupNames.getOrElse(g.getHref, g.getHref)}.toSet
     val emails: Set[String] = contactEntry.getEmailAddresses.asScala.map { e => e.getAddress.toLowerCase}.toSet
 
-    new GoogleContact(groups, emails, contactEntry.getTitle.getPlainText, contactEntry.getGroupMembershipInfos.asScala)
+    new GoogleContact(emails.asJava, contactEntry.getTitle.getPlainText, groups.asJava, contactEntry.getGroupMembershipInfos.asScala)
   }
 }
 
@@ -51,9 +59,9 @@ class GoogleContacts() extends NamedBean with ValuesImmutableBean  {
   private lazy val service: ContactsService = GoogleContacts.getService(getAccount, getPassword)
   private lazy val groupHrefToName = getGroupMap(service, getAccount)
   private lazy val groupNameToHref = groupHrefToName.map { entry => (entry._2, entry._1) }.toMap
-  private lazy val contacts: List[GoogleContact] = getContacts(service, getAccount, groupHrefToName)
+  private lazy val contacts: List[GoogleContact] = loadContacts(service, getAccount, groupHrefToName)
   private lazy val emails: Set[String] = {
-    val entries = for {contact <- contacts; email <- contact.emails} yield email.toLowerCase
+    val entries = for {contact <- contacts; email <- contact.emails.asScala} yield email.toLowerCase
     entries.toSet
   }
 
@@ -132,6 +140,16 @@ class GoogleContacts() extends NamedBean with ValuesImmutableBean  {
     service.insert(postURL, contact)
   }
 
+  def getContacts(): java.util.List[GoogleContact] = contacts.asJava
+
+  /**
+   * For every email in this contacts account return a "Who" object
+   * @return emails wrapped in a Who object (so we can know the name)
+   */
+  def getEmails(): java.util.List[Who] = {
+    val whos = for (contact <- contacts; email <- contact.getEmails.asScala) yield (Who(contact.name, email))
+    whos.asJava
+  }
 }
 
 object GoogleContacts {
@@ -160,7 +178,7 @@ object GoogleContacts {
     groupEntries.map { g => (g.getId, g.getTitle.getPlainText)}.toMap
   }
 
-  def getContacts(service: ContactsService, account: String, groupNames: Map[String, String]): List[GoogleContact] = {
+  def loadContacts(service: ContactsService, account: String, groupNames: Map[String, String]): List[GoogleContact] = {
 
     val url = s"$GoogleApiUrl/contacts/$account/full?max-results=$MaxResults"
     logger.info(s"contacting google with url: $url")

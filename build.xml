@@ -105,7 +105,7 @@
     <target name="distribution" depends="package,docs">
 
         <zip destfile="${dist.dir}/${distribution}.zip" >
-            <zipfileset dir="samples" prefix="${distribution}"/>
+            <zipfileset dir="examples" prefix="${distribution}"/>
             <zipfileset dir="${doc.dir}" prefix="${distribution}/docs"/>
             <zipfileset dir="${dist.dir}" includes="emailscript.jar" prefix="${distribution}"/>
         </zip>
