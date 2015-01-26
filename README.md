@@ -1,19 +1,15 @@
 #Emailscript
 
-Hack your inbox! Run scripts to manage your mail.
-Use your choice of javascript, groovy, or ruby to run against your email account.
+Hack your inbox! Write simple scripts to do powerful things.
 
 ##Features
 
-* Efficiently read emails from your inbox
-* Continously scan folders, to instantly handle emails as they come in
+* Continuously scan folders, to instantly handle emails as they come in
 * Tag senders to build whitelists, blacklists, etc.
 * Integrates with GoogleContacts
 * Move, delete emails
 * Send emails using mustache templates
 * Supports javascript, groovy, or ruby
-
-##Example script
 
 This script is all that is needed to set up a blacklist.
 
