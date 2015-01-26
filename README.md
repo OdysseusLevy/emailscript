@@ -11,6 +11,8 @@ Hack your inbox! Write simple scripts to do powerful things.
 * Send emails using mustache templates
 * Supports javascript, groovy, or ruby
 
+##Example
+
 This script is all that is needed to set up a blacklist.
 
 Any email that is dragged into it the "Junk" folder will
