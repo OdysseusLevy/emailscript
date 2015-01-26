@@ -13,6 +13,33 @@ Use your choice of javascript, groovy, or ruby to run against your email account
 * Send emails using mustache templates
 * Supports javascript, groovy, or ruby
 
+##Example script
+
+This script is all that is needed to set up a blacklist.
+
+Any email that is dragged into it the "Junk" folder will
+cause the sender to be blacklisted. All blacklisted emails will be moved immediately out of the Inbox.
+
+  MyEmail.scanFolder("Junk", false){emails ->
+
+    for(email in emails){
+        if (!email.from.getValue("blacklisted")){
+            logger.info("Blacklisting; from: ${email.from}")
+            email.from.setValue("blacklisted", true)
+        }
+    }
+  }
+
+  MyEmail.scanFolder("Inbox"){emails ->
+
+    for(email in emails){
+       if (email.from.getValue("blacklisted")){
+          logger.info("$email.from is blacklisted")
+          email.moveTo("Junk")
+       }
+    }
+  }
+
 ##Documentation
 
 [Getting started, Tutorials] (https://github.com/OdysseusLevy/emailscript/wiki)
