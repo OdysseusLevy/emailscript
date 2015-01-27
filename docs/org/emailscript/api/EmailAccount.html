@@ -2,9 +2,9 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
 <html>
         <head>
-          <title>EmailAccount - &lt;div&gt;EmailScript 0.2.0&lt;/div&gt; - org.emailscript.api.EmailAccount</title>
-          <meta name="description" content="EmailAccount - div EmailScript 0.2.0 div - org.emailscript.api.EmailAccount" />
-          <meta name="keywords" content="EmailAccount div EmailScript 0.2.0 div org.emailscript.api.EmailAccount" />
+          <title>EmailAccount - &lt;div&gt;EmailScript 0.2.1&lt;/div&gt; - org.emailscript.api.EmailAccount</title>
+          <meta name="description" content="EmailAccount - div EmailScript 0.2.1 div - org.emailscript.api.EmailAccount" />
+          <meta name="keywords" content="EmailAccount div EmailScript 0.2.1 div org.emailscript.api.EmailAccount" />
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
           
       <link href="../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
@@ -590,6 +590,22 @@ smtpHost: &lt;SmtpHost&gt;</pre></div><div class="toggleContainer block">
       </h4>
       <p class="shortcomment cmt">Read in all new messages.</p><div class="fullcomment"><div class="comment cmt"><p>Read in all new messages. The first time this is run it will read in all messages. Subsequent calls will only return
 messages that have been added after the first time messages were read.</p></div><dl class="paramcmts block"><dt class="param">folderName</dt><dd class="cmt"><p>folder to read from</p></dd><dt class="param">callback</dt><dd class="cmt"></dd></dl></div>
+    </li><li name="org.emailscript.api.EmailAccount#scanFolder" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="scanFolder(folderName:String,doFirstRead:Boolean,scanner:org.emailscript.api.ScriptCallback):Unit"></a>
+      <a id="scanFolder(String,Boolean,ScriptCallback):Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">scanFolder</span><span class="params">(<span name="folderName">folderName: <span class="extype" name="scala.Predef.String">String</span></span>, <span name="doFirstRead">doFirstRead: <span class="extype" name="scala.Boolean">Boolean</span></span>, <span name="scanner">scanner: <a href="ScriptCallback.html" class="extype" name="org.emailscript.api.ScriptCallback">ScriptCallback</a></span>)</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <p class="shortcomment cmt">Scan folder (same as above), but with option to not do the first, initial read
+</p><div class="fullcomment"><div class="comment cmt"><p>Scan folder (same as above), but with option to not do the first, initial read
+</p></div><dl class="paramcmts block"><dt class="param">folderName</dt><dd class="cmt"></dd><dt class="param">doFirstRead</dt><dd class="cmt"></dd><dt class="param">scanner</dt><dd class="cmt"><p>
+</p></dd></dl></div>
     </li><li name="org.emailscript.api.EmailAccount#scanFolder" visbl="pub" data-isabs="false" fullComment="yes" group="Functions">
       <a id="scanFolder(folderName:String,scanner:org.emailscript.api.ScriptCallback):Unit"></a>
       <a id="scanFolder(String,ScriptCallback):Unit"></a>

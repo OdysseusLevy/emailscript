@@ -6,6 +6,7 @@ class Count {
         from = email.from.toString()
         helper = formatHelper  // Global script variables like Helper are not accessible inside a class
     }
+
     def helper
     def from
     def count = 0

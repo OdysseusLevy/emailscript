@@ -80,9 +80,9 @@ object MailUtils {
     doCallback(account, dataName, folder.asInstanceOf[IMAPFolder], callback)
   }
 
-  def scanFolder(account: EmailAccount, folderName: String, callback: ScriptCallback): Unit = {
+  def scanFolder(account: EmailAccount, folderName: String, callback: ScriptCallback, doFirstRead: Boolean = true): Unit = {
     val mailFolder = openFolder(account, folderName)
-    ImapFolderScanner.scanFolder(account, mailFolder.asInstanceOf[IMAPFolder], callback)
+    ImapFolderScanner.scanFolder(account, mailFolder.asInstanceOf[IMAPFolder], callback, doFirstRead)
   }
 
   def fetch(messages: Array[Message], folder: Folder) = {

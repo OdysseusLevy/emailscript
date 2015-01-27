@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory
  *
  * Code adapted from an answer found here: http://stackoverflow.com/questions/4155412/javamail-keeping-imapfolder-idle-alive
  */
-class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, callback: ScriptCallback) extends Runnable {
+class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: Boolean, callback: ScriptCallback) extends Runnable {
 
   import ImapFolderScanner._
 
@@ -66,8 +66,8 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, callback: Scr
   override def run() {
 
     // Run the callback right away
-
-    MailUtils.doCallback(account, dataName, folder, callback)
+    if (doFirstRead)
+      MailUtils.doCallback(account, dataName, folder, callback)
 
 
     // Start a separate thread to send keep alive messages to the server
@@ -88,11 +88,12 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, callback: Scr
       }
       catch {
         case closed: FolderClosedException =>
-          logger.warn(s" Folder ${folder.getName} is closed. isOpe: ${folder.isOpen}", closed)
-        case e: MessagingException =>
-          logger.error("IDLE not supported?", e)
+          logger.warn(s" Folder ${folder.getName} is closed. isOpen: ${folder.isOpen}", closed)
+        case e: Throwable =>
+          logger.error(s"Error running scanning callback on folder: ${folder.getName}", e)
           keepAlive.interrupt() //we want both threads to stop now
           throw new RuntimeException(e)
+
       }
     }
 
@@ -112,15 +113,15 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, callback: Scr
 object ImapFolderScanner {
 
   val logger = LoggerFactory.getLogger(getClass)
-  val KEEP_ALIVE_FREQ = Duration.ofMillis(9).toMillis // rumor has it that gmail only allows 10 minute connections
+  val KEEP_ALIVE_FREQ = Duration.ofMinutes(9).toMillis // rumor has it that gmail only allows 10 minute connections
 
   var threads = Map[IMAPFolder, Thread]()
 
   def isDone = threads.size == 0
 
-  def scanFolder(account: EmailAccount, folder: IMAPFolder, callback: ScriptCallback): Unit = {
+  def scanFolder(account: EmailAccount, folder: IMAPFolder, callback: ScriptCallback, doFirstRead: Boolean): Unit = {
 
-    val scanner = new ImapFolderScanner(account, folder, callback)
+    val scanner = new ImapFolderScanner(account, folder, doFirstRead, callback)
     val listenerThread = new Thread(scanner, folder.getName + "-Scanner" )
 
     threads = threads + (folder -> listenerThread)

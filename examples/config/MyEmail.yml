@@ -1,0 +1,6 @@
+!EmailAccount
+nickname: MyEmail
+imapHost: <ImapHost>
+user: <User@MyDomain>
+password: <Password>
+smtpHost: <SmtpHost>

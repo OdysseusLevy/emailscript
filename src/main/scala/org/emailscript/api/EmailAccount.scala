@@ -130,6 +130,16 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
   def scanFolder(folderName: String, scanner: ScriptCallback): Unit = MailUtils.scanFolder(this, folderName, scanner)
 
   /**
+   * Scan folder (same as above), but with option to not do the first, initial read
+   *
+   * @param folderName
+   * @param doFirstRead
+   * @param scanner
+   */
+  def scanFolder(folderName: String, doFirstRead: Boolean,  scanner: ScriptCallback): Unit =
+    MailUtils.scanFolder(this, folderName, scanner, doFirstRead)
+
+  /**
    * Read in all new messages. The first time this is run it will read in all messages. Subsequent calls will only return
    * messages that have been added after the first time messages were read.
    * @param folderName folder to read from

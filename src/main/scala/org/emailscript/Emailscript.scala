@@ -12,6 +12,7 @@ import org.slf4j.{LoggerFactory, MDC}
 object Emailscript {
 
   val logger = LoggerFactory.getLogger(getClass)
+  val usage = "[-h | --help] [-debugLogging] [-dryrun] scriptname"
 
   /**
    * Use this when something is not working with the logger
@@ -21,56 +22,74 @@ object Emailscript {
     StatusPrinter.print(lc)
   }
 
+  def getScriptName(args: Array[String]): String = {
+    if (args.length == 0)
+      "main.groovy"
+    else
+      args(args.length - 1)
+  }
+
+  /**
+   * Handle our command line arguments
+   */
+  def handleArgs(args: Array[String]): Option[File] = {
+
+    if (args.contains("-h") || args.contains("--help")){
+      return None
+    }
+
+    //
+    // Read in script
+    //
+
+    val scriptName = getScriptName(args)
+    val script = new File(scriptName)
+    if (!script.exists) {
+      println(s"${script.getName} not found!")
+      return None
+    }
+
+    //
+    // Configure our logger to output to <scriptName>.log (see logback.xml config file)
+    //
+
+    MDC.put("script", Files.getNameWithoutExtension(getScriptName(args)))
+
+    if (args.contains("-debugLogging"))
+      debugLogging()
+
+    MailUtils.dryRun = if (args.contains("-dryrun")) true else false
+    if (MailUtils.dryRun){
+      logger.info("Running in debug mode")
+    }
+
+    Some(script)
+  }
+
   def main(args: Array[String]) {
 
-    val usage = "[-h | --help] [-debugLogging] [-dryrun] scriptname"
     try {
-
-      //
-      // Read arguments
-      //
-
-      if (args.contains("-h") || args.contains("--help")){
+      val script = handleArgs(args)
+      if (!script.isDefined){
         println(s"Usage: $usage")
         return
       }
 
-      if (args.contains("-debugLogging"))
-        debugLogging()
-
-      MailUtils.dryRun = if (args.contains("-dryrun")) true else false
-      if (MailUtils.dryRun){
-        logger.info("Running in debug mode")
-      }
-
-      //
-      // Read in script
-      //
-
-      val scriptName = if (args.length == 0) "main.groovy" else args(args.length - 1)
-      val script = new File(scriptName)
-      if (!script.exists) {
-        throw new Exception(s"{script.getName} not found! Usage: ${usage}")
-      }
-
-      // Configure our logger to output to <scriptName>.log (see logback.xml config file)
-      MDC.put("script", Files.getNameWithoutExtension(scriptName))
-
-
-
-      val result = ScriptHelper.runScript(script)
-
+      val result = ScriptHelper.runScript(script.get)
       logger.info(s"finished processing; result: ${result}")
     }
     catch {
       case e: Throwable => logger.error("Fatal Error", e)
     }
 
-    Tags.save()
-    Values.save()
+    try{
+      Tags.save()
+      Values.save()
 
-    MailUtils.close()
-
+      MailUtils.close()
+    } catch {
+      case e: Throwable => logger.error("Error during close", e)
+    }
   }
 
 }
