@@ -58,6 +58,7 @@ Send your comments/scripts to odysseus-at-cosmosgame.org. Put "Emailscript" some
 
 ##Versions
 
+* 0.2.1 1/26/2015 Bug fixes, more samples
 * 0.2.0 1/19/2015 Samples, Documentation
 * 0.1.0 Initial Release
 
