@@ -23,8 +23,8 @@
         </header>
 
         <section id="downloads" class="clearfix">
-          <a href="https://github.com/OdysseusLevy/emailscript/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
-          <a href="https://github.com/OdysseusLevy/emailscript/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/OdysseusLevy/emailscript/releases/download/v0.2.1/emailscript.jar" id="download-zip" class="button"><span>Download .jar</span></a>
+          <a href="https://github.com/OdysseusLevy/emailscript/releases/download/v0.2.1/emailscript-0.2.1.zip" id="download-tar-gz" class="button"><span>Download .zip</span></a>
           <a href="https://github.com/OdysseusLevy/emailscript" id="view-on-github" class="button"><span>View on GitHub</span></a>
         </section>
 
@@ -53,12 +53,13 @@
 
 <p>This is all you need to do to set up a blacklist.</p>
 
-<p>Any email that is dragged into it the "Junk" folder will
+<p>Any email that is dragged into the "Junk" folder will
 cause the sender to be blacklisted. All subsequent blacklisted emails will be moved immediately out of the Inbox.</p>
 
 <pre><code>// Continuously scan the "Junk" folder for new mails
 
-MyEmail.scanFolder("Junk"){emails -&gt;    // This closure is called when new emails appear
+MyEmail.scanFolder("Junk"){emails -&gt;    
+  // This closure is called when new emails appear
 
   for(email in emails){
     if (!email.from.hasTag("blacklisted")){
@@ -70,7 +71,8 @@ MyEmail.scanFolder("Junk"){emails -&gt;    // This closure is called when new em
 
 // Continuously scan the "Inbox" folder for new mails
 
-MyEmail.scanFolder("Inbox"){emails -&gt;  // This closure is called when new emails appear
+MyEmail.scanFolder("Inbox"){emails -&gt;  
+  // This closure is called when new emails appear
 
   for(email in emails){
     if (email.from.hasTag("blacklisted")){
