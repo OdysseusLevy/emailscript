@@ -1,0 +1,41 @@
+nickname: MailRules
+
+Hardcore: false 
+
+CategoryRules:
+    - subjectContains: Emailscript
+      category: Emailscript
+    - host: facebookmail.com
+      category: Social
+    - subjectContains: Jaiya
+      category: friends
+    - subjectContains: Ulysses
+      category: friends
+
+Spam:
+    folder: Junk
+
+Categories:
+    Emailscript:
+        skipScan: true
+        whitelist: true
+        saveUnread: true
+        inboxDays: 7
+    Notifications:
+        inboxMax: 2
+        folderDays: 60
+        whitelist: true
+    Newsletters:
+        inboxMax: 2
+        whitelist: true
+    Bulk:
+        folderDays: 60
+    Junk:
+        folderDays: 45
+    Social:
+        inboxMax: 2
+        whitelist: true
+    friends:
+        saveUnread: true
+        inboxDays: 7
+        whitelist: true
