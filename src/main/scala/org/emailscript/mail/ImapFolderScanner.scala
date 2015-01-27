@@ -89,10 +89,11 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
       catch {
         case closed: FolderClosedException =>
           logger.warn(s" Folder ${folder.getName} is closed. isOpen: ${folder.isOpen}", closed)
-        case e: MessagingException =>
-          logger.error("IDLE not supported?", e)
+        case e: Throwable =>
+          logger.error(s"Error running scanning callback on folder: ${folder.getName}", e)
           keepAlive.interrupt() //we want both threads to stop now
           throw new RuntimeException(e)
+
       }
     }
 

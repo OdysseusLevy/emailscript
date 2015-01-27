@@ -9,30 +9,34 @@ Hack your inbox! Write simple scripts to do powerful things.
 * Integrates with GoogleContacts
 * Move, delete emails
 * Send emails using mustache templates
-* Supports javascript, groovy, or ruby
+* Currently supports javascript, groovy, and ruby. It is easy to add support for more.
 
 ##Example
 
-This script is all that is needed to set up a blacklist.
+This is all you need to do to set up a blacklist.
 
 Any email that is dragged into it the "Junk" folder will
-cause the sender to be blacklisted. All blacklisted emails will be moved immediately out of the Inbox.
+cause the sender to be blacklisted. All subsequent blacklisted emails will be moved immediately out of the Inbox.
 
-    MyEmail.scanFolder("Junk", false){emails ->
+    // Continuously scan the "Junk" folder for new mails
+
+    MyEmail.scanFolder("Junk"){emails ->    // This closure is called when new emails appear
 
       for(email in emails){
-        if (!email.from.getValue("blacklisted")){
+        if (!email.from.hasTag("blacklisted")){
           logger.info("Blacklisting; from: ${email.from}")
-          email.from.setValue("blacklisted", true)
+          email.from.addTag("blacklisted")
         }
       }
     }
 
-    MyEmail.scanFolder("Inbox"){emails ->
+    // Continuously scan the "Inbox" folder for new mails
+
+    MyEmail.scanFolder("Inbox"){emails ->  // This closure is called when new emails appear
 
       for(email in emails){
-       if (email.from.getValue("blacklisted")){
-         logger.info("$email.from is blacklisted")
+        if (email.from.hasTag("blacklisted")){
+          logger.info("$email.from is blacklisted")
           email.moveTo("Junk")
         }
       }
@@ -44,11 +48,11 @@ cause the sender to be blacklisted. All blacklisted emails will be moved immedia
 
 [Api documentation](http://odysseuslevy.github.io/emailscript/docs/index.html#package)
 
-##Please try it!
+##Try it!
 
-I would love to get feedback!
+Writing email scripts is surprisingly fun. You can do an amazing amount with very little scripting.
 
-Please send me your scripts. I need more samples!
+Try writing some scripts. If you come up with something useful share it with everyone.
 
 Send your comments/scripts to odysseus-at-cosmosgame.org. Put "Emailscript" somewhere in the subject line.
 

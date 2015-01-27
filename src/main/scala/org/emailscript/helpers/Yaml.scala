@@ -3,6 +3,7 @@ package org.emailscript.helpers
 import java.io._
 
 import org.emailscript.api.{GoogleContacts, LastScan, Who, EmailAccount}
+import org.slf4j.LoggerFactory
 import org.yaml.snakeyaml
 import org.yaml.snakeyaml.constructor.{Construct, Constructor}
 import org.yaml.snakeyaml.nodes.{Node, ScalarNode, Tag}
@@ -37,7 +38,6 @@ class Yaml(val dataDir: File, var dataFiles: Map[String,File]) {
     }
 
     Yaml.saveToFile(data, dataFiles(dataName))
-
   }
 }
 
@@ -46,6 +46,8 @@ object filter extends FilenameFilter {
 }
 
 object Yaml {
+
+  val logger = LoggerFactory.getLogger(getClass)
 
   val WhoTag = new Tag("!Who")
   val EmailAccountTag = new Tag("!EmailAccount")
@@ -75,6 +77,9 @@ object Yaml {
 
     try {
       read(reader)
+    } catch {
+      case e: Throwable => logger.error(s"Failed to read data from file: ${file.getName}", e)
+                           throw e
     } finally {
       reader.close()
     }
@@ -104,7 +109,10 @@ object Yaml {
     val writer = new FileWriter(file)
     try {
       save(data, writer)
-    } finally {
+    } catch {
+      case e: Throwable => logger.error(s"Failed to save yaml data to file ${file.getName}", e);
+                           throw e
+    } finally{
       writer.close()
     }
   }
@@ -118,8 +126,6 @@ object Yaml {
 
     dataDir.listFiles(filter).map(file => file.getName -> file).toMap
   }
-
-
 
   def main(args: Array[String]) {
 
@@ -151,7 +157,6 @@ object Yaml {
 
       override def construct2ndStep(node: Node, `object`: scala.Any): Unit = {}
     }
-
   }
 
   class TestWho(val personal: String, val email: String){
