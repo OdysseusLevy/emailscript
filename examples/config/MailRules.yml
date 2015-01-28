@@ -12,8 +12,7 @@ CategoryRules:
     - subjectContains: Ulysses
       category: friends
 
-Spam:
-    folder: Junk
+Spam: Junk
 
 Categories:
     Emailscript:
@@ -23,7 +22,6 @@ Categories:
         inboxDays: 7
     Notifications:
         inboxMax: 2
-        folderDays: 60
         whitelist: true
     Newsletters:
         inboxMax: 2

@@ -17,6 +17,7 @@ object ScriptHelper {
   def getEngineName(f: File): String = {
     Files.getFileExtension(f.getName) match {
       case "ruby" => "ruby"
+      case "rb" => "ruby"
       case "groovy" => "groovy"
       case _ => "nashorn"
     }

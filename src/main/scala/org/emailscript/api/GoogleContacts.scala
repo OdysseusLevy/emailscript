@@ -32,26 +32,6 @@ import scala.collection.JavaConverters._
  *
  */
 
-class GoogleContact (
-  @BeanProperty val emails: java.util.Set[String],
-  @BeanProperty val name: String,
-  @BeanProperty val groups: java.util.Set[String],
-  private val groupEntries: Iterable[GroupMembershipInfo]) {
-
-  override def toString() = s"name: $name emails: ${emails.toString}, groups: ${groups.toString}"
-}
-
-object GoogleContact {
-
-  def apply(contactEntry: ContactEntry, groupNames: Map[String, String]) = {
-
-    val groups: Set[String] = contactEntry.getGroupMembershipInfos.asScala.map { g => groupNames.getOrElse(g.getHref, g.getHref)}.toSet
-    val emails: Set[String] = contactEntry.getEmailAddresses.asScala.map { e => e.getAddress.toLowerCase}.toSet
-
-    new GoogleContact(emails.asJava, contactEntry.getTitle.getPlainText, groups.asJava, contactEntry.getGroupMembershipInfos.asScala)
-  }
-}
-
 class GoogleContacts() extends NamedBean with ValuesImmutableBean  {
 
   import GoogleContacts._
@@ -189,22 +169,30 @@ object GoogleContacts {
     entries.map { ce => GoogleContact(ce, groupNames)}.toList
   }
 
-  def main(args: Array[String]) {
+  /**
+   * Represents a Google contact
+   *
+   * @param emails emails this contact has
+   * @param name   name of contact
+   * @param groups  groups this contact is member of
+   */
+  class GoogleContact (
+                        @BeanProperty val emails: java.util.Set[String],
+                        @BeanProperty val name: String,
+                        @BeanProperty val groups: java.util.Set[String],
+                        private val groupEntries: Iterable[GroupMembershipInfo]) {
 
+    override def toString() = s"name: $name emails: ${emails.toString}, groups: ${groups.toString}"
+  }
 
-    //contacts.addContact(Who("Testwww", "testvvvv@test.com"), Set("Businesses", "Family"))
+  object GoogleContact {
 
-    //    contacts.groupNames.foreach { name: String =>
-    //      println(name)
-    //    }
-    //
-    //    println(contacts.emails.mkString(","))
-    //    contacts.contacts.foreach { contact: GoogleContact =>
-    //      println(contact.title)
-    //      println("\tgroups: " + contact.groups.mkString(","))
-    //      println("\tgroup info:" + contact.groupEntries.mkString(","))
-    //      println("\temails: " + contact.emails.mkString(","))
-    //    }
+    def apply(contactEntry: ContactEntry, groupNames: Map[String, String]) = {
 
+      val groups: Set[String] = contactEntry.getGroupMembershipInfos.asScala.map { g => groupNames.getOrElse(g.getHref, g.getHref)}.toSet
+      val emails: Set[String] = contactEntry.getEmailAddresses.asScala.map { e => e.getAddress.toLowerCase}.toSet
+
+      new GoogleContact(emails.asJava, contactEntry.getTitle.getPlainText, groups.asJava, contactEntry.getGroupMembershipInfos.asScala)
+    }
   }
 }
