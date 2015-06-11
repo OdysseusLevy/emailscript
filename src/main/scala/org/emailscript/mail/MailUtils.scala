@@ -1,5 +1,6 @@
 package org.emailscript.mail
 
+import java.io.{FileOutputStream, File}
 import java.util.{Date, Properties}
 import javax.mail.Flags.Flag
 import javax.mail._
@@ -22,17 +23,30 @@ object MailUtils {
   val yaml = Yaml()
   val MoveHeader = "Mailscript-Move"
   val logger = LoggerFactory.getLogger(getClass)
+  val defaultFetchProfile = createDefaultFetchProfile()
+
   var folders = new HashMap[String, Folder]()
   var accounts = new HashMap[EmailAccount,Store]()
 
   var dryRun: Boolean = false
   lazy val defaultPermissions = if (dryRun) Folder.READ_ONLY else Folder.READ_WRITE
 
+
   def ensureOpen(folder: Folder) = {
     if (!folder.isOpen){ //Just in case we get timed out
       logger.warn(s"reopening folder: ${folder.getName}")
       folder.open(MailUtils.defaultPermissions)
     }
+  }
+
+  private def createDefaultFetchProfile() = {
+    val fp = new FetchProfile()
+    fp.add(FetchProfile.Item.ENVELOPE)
+    fp.add(FetchProfile.Item.FLAGS)
+    fp.add(FetchProfile.Item.SIZE)
+    fp.add(UIDFolder.FetchProfileItem.UID)
+    fp.add(MoveHeader)
+    fp
   }
 
   def getStore(account: EmailAccount) = accounts.getOrElse(account, connect(account))
@@ -87,17 +101,11 @@ object MailUtils {
 
   def fetch(messages: Array[Message], folder: Folder) = {
     logger.info(s"fetching ${messages.length} email(s) from ${folder.getName()}")
-    val fp = new FetchProfile()
-    fp.add(FetchProfile.Item.ENVELOPE)
-    fp.add(FetchProfile.Item.FLAGS)
-    fp.add(FetchProfile.Item.SIZE)
-    fp.add(MoveHeader)
-
-    folder.fetch(messages,fp)
+    folder.fetch(messages,defaultFetchProfile)
     logger.info(s"finishing fetch for ${folder.getName()}")
   }
 
-  def convertMessages(account: EmailAccount, messages: Array[Message], folder: Folder) = {
+  def getEmails(account: EmailAccount, messages: Array[Message], folder: Folder) = {
     fetch(messages, folder)
     messages.map { case m:IMAPMessage => MailMessage(new MailMessageHelper(account, m))}
   }
@@ -108,7 +116,7 @@ object MailUtils {
     val folder = openFolder(account, folderName)
     val emails = folder.search(olderThan)
 
-    convertMessages(account, emails, folder)
+    getEmails(account, emails, folder)
   }
 
   def getEmailsAfter(account: EmailAccount, folderName: String, date: java.util.Date) = {
@@ -117,7 +125,7 @@ object MailUtils {
     val folder = openFolder(account, folderName)
     val emails = folder.search(newerThan)
 
-    convertMessages(account, emails, folder)
+    getEmails(account, emails, folder)
   }
 
   def getEmails(account: EmailAccount, folderName: String, limit:Int = 0): Array[MailMessage] = {
@@ -127,7 +135,7 @@ object MailUtils {
     val count = mailFolder.getMessageCount
 
     val messages = mailFolder.getMessages(start, count)
-    convertMessages(account, messages, mailFolder)
+    getEmails(account, messages, mailFolder)
   }
 
   def getEmailsAfter(account: EmailAccount, folderName: String, startUID: java.lang.Long): Array[MailMessage] = {
@@ -197,6 +205,10 @@ object MailUtils {
       logger.info("Exiting main program, but scanning threads are still running")
     }
 
+  }
+
+  def saveToFile(message: IMAPMessage, file : File) = {
+    message.writeTo(new FileOutputStream(file));
   }
 
   def delete(permanent: Boolean, m: MailMessageHelper): Unit = {
@@ -304,7 +316,7 @@ object MailUtils {
 
     /**
      * Simplified algorithm for extracting a message's text. When presented with alternatives it will always
-     * choose the 'preferred' format (which turns out to be html)
+     * choose the 'preferred' format (which turns out to be body)
      *
      * Note that with complicated formats (such as lots of attachments with text interspersed between them) it will
      * simply return the first text block it finds

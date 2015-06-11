@@ -8,13 +8,15 @@ import org.emailscript.mail.MailUtils
 import scala.beans.BeanProperty
 
 /**
- * Use this to send email messages
+ * Use this to send very simple email messages
  */
 class EmailBean {
   @BeanProperty var subject: String = ""
   @BeanProperty var from: Who = Who.NoOne
   @BeanProperty var to: Who = Who.NoOne
-  @BeanProperty var html: String = ""
+  @BeanProperty var folder: String = ""
+  @BeanProperty var body: String = ""
+  @BeanProperty var uid: Long = -1
 
   def setTo(email: String) = {to = Who("", email)}
   def setTo(name: String, email: String) = {to = Who(name, email)}
@@ -27,7 +29,7 @@ class EmailBean {
     message.setRecipient(Message.RecipientType.TO, to.toAddress)
     message.setFrom(from.toAddress)
     message.setSubject(subject)
-    message.setText(html, "utf-8", "html") //Review -- for now we assume html
+    message.setText(body, "utf-8", "body") //Review -- for now we assume body
     message
   }
 }

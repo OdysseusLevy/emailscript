@@ -47,7 +47,7 @@ To run this script you just need the emailscript jar
     java -jar emailscript.jar scan.groovy
 
 Again, note that scripts can be in either groovy, ruby, or javascript. If you want more, ask! They are easy to add.
-    
+
 ##Documentation
 
 [Getting started, Tutorials] (https://github.com/OdysseusLevy/emailscript/wiki)

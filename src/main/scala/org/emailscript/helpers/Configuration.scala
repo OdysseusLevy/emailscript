@@ -21,6 +21,9 @@ object Configuration {
   val DataName = "Data"
   val LoggerName = "logger"
   val HelperName = "Helper"
+  val SearchName = "Search"
+
+  val homeDir = new File(".")
 
   def getFiles(folderName: String, suffix: String): Stream[File] = {
     val folder = new File(folderName)
@@ -54,6 +57,8 @@ object Configuration {
     scope.put(DataName, Yaml())
     scope.put(LoggerName, LoggerFactory.getLogger("script"))
     scope.put(HelperName, new Helper(scope))
+
+    scope.put(SearchName, new Search(homeDir))
   }
 
   private def readBean(file: File): Option[(String,AnyRef)]= {
