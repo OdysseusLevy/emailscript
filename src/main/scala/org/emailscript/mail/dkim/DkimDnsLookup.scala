@@ -38,12 +38,12 @@ class DkimDnsLookup(helper: DnsHelper) {
   private def createKey(record: String): Option[PublicKey] = {
 
     try {
-      logger.info(s"dns record: $record")
+      logger.debug(s"dns record: $record")
       val fields = DkimSignature.mapFields(deQuote(record))
       validate(fields).flatMap(generatePublicKey)
     } catch {
       case error: Throwable =>
-        logger.info(s"invalid dns entry: error: ${error.getMessage} $record")
+        logger.debug(s"invalid dns entry: error: ${error.getMessage} $record")
         None
     }
   }
@@ -56,7 +56,7 @@ class DkimDnsLookup(helper: DnsHelper) {
 
   private def generatePublicKey(encodedPublicKey: String): Option[PublicKey] = {
 
-      logger.info(s"encoded key: $encodedPublicKey")
+      logger.debug(s"encoded key: $encodedPublicKey")
 
       val keyText = removeWhiteSpace(encodedPublicKey)
       val decodedKey = Base64.getDecoder().decode(keyText)

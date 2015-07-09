@@ -12,6 +12,8 @@ import collection.JavaConverters._
 
 import scala.collection.mutable
 
+case class Body(bytes: Array[Byte], length: Int)
+
 case class DkimResult(description: String,           // Error message, if any goes here
                       dkim: DkimSignature = null) {  // Dkim Signature record goes here on success
 
@@ -26,7 +28,7 @@ case class Header(key: String, value: String, line: String) {
 
 object DkimVerifier {
 
-  case class Body(bytes: Array[Byte], length: Long)
+  case class Body(bytes: Array[Byte], length: Int)
 
   import DkimSignature._
 
@@ -80,14 +82,13 @@ object DkimVerifier {
       bytes(index) == '\r' && bytes(index + 1) == '\n'
   }
 
-  def verifyBody(email: MimeMessage, dkim: DkimSignature): Boolean = {
-
+  def getBody(email: MimeMessage, dkim: DkimSignature): Body = {
     var length: Int = if (dkim.bodyLength > 0) dkim.bodyLength else email.getSize
 
     val body = new Array[Byte](length + 2)
 
     if (dkim.bodyCanonicalization == DkimSignature.Relaxed)
-      relaxedBodyFormat(email.getInputStream, body, length)
+      length = relaxedBodyFormat(email.getInputStream, body, length)
     else
       length = email.getInputStream.read(body, 0, length)
 
@@ -95,26 +96,49 @@ object DkimVerifier {
 
     if(!hasCRLF(body, length -2)){
       body(length) = '\r'
-      body(length) = '\n'
+      body(length+1) = '\n'
       length += 2
     }
 
     // Remove any duplicate CRLF's at the end
 
+    val deleteme = length
     length = ignoreExtraEndLines(body, length)
+
+    Body(body, length)
+  }
+
+  def verifyBody(email: MimeMessage, dkim: DkimSignature): Boolean = {
+
+    var length: Int = if (dkim.bodyLength > 0) dkim.bodyLength else email.getSize
+
+    val body = new Array[Byte](length + 2)
+
+    if (dkim.bodyCanonicalization == DkimSignature.Relaxed)
+      length = relaxedBodyFormat(email.getInputStream, body, length)
+    else
+      length = email.getInputStream.read(body, 0, length)
+
+    // Ensure that the body has a CRLF at the end
+
+    if(!hasCRLF(body, length -2)){
+      body(length) = '\r'
+      body(length+1) = '\n'
+      length += 2
+    }
+
+    // Remove any duplicate CRLF's at the end
+
+    val deleteme = length
+    length = ignoreExtraEndLines(body, length)
+
 
     // Create hash and compare it
 
-    val md: MessageDigest = MessageDigest.getInstance(dkim.getMethodDigestAlgorithm)
-    md.update(body, 0, length)
-
-    val bsenc: BASE64Encoder = new BASE64Encoder
-    val digest: String = bsenc.encode(md.digest)
+    val digest = getHash(body, length, dkim.getMethodDigestAlgorithm)
 
     digest == dkim.bodyHash
   }
-
-  private def isSpace(ch: Character): Boolean = ch == ' ' || ch == '\t'
 
   def ignoreExtraEndLines(bytes: Array[Byte], end: Int): Int = {
     var i = end
@@ -125,7 +149,17 @@ object DkimVerifier {
     i
   }
 
-  def relaxedBodyFormat(is: InputStream,  bytes: Array[Byte], length: Int): Long = {
+  def getHash(bytes: Array[Byte], length: Int, method: String): String = {
+    val md: MessageDigest = MessageDigest.getInstance(method)
+    md.update(bytes, 0, length)
+
+    val bsenc: BASE64Encoder = new BASE64Encoder
+    bsenc.encode(md.digest)
+  }
+
+  def removeTab(ch: Char) = if (ch == '\t') ' ' else ch
+
+  def relaxedBodyFormat(is: InputStream,  bytes: Array[Byte], length: Int): Int = {
 
     var outCount = 0
     var current = is.read()
@@ -134,11 +168,11 @@ object DkimVerifier {
 
       val next = is.read()
 
-      val nextCh = next.toChar
-      val char = current.toChar
+      val nextCh = removeTab(next.toChar)
+      val char = removeTab(current.toChar)
 
-      if (!isSpace(char) || !(isSpace(nextCh) || nextCh == '\r')){
-        bytes(outCount) = current.toByte
+      if (char != ' ' || !(nextCh == ' '|| nextCh == '\r')){
+        bytes(outCount) = char.toByte
         outCount += 1
       }
 
@@ -239,7 +273,7 @@ class DkimVerifier(dkim: DkimSignature, headerStacks: HeaderStack, dnsHelper: Dn
     val publicKey = publicKeyOption.get
     val dkimHeaderText = getSignatureText()
 
-    logger.info(s"headerText:\n$dkimHeaderText")
+    logger.debug(s"headerText:\n$dkimHeaderText")
 
     val bs: BASE64Decoder = new BASE64Decoder
     val sigBuf: Array[Byte] = bs.decodeBuffer(dkim.signature)
@@ -273,8 +307,10 @@ class DkimVerifier(dkim: DkimSignature, headerStacks: HeaderStack, dnsHelper: Dn
 
     var result: String = ""
     headers.foreach{ headerName =>
-      val header = getHeader(headerName)
-      result += processHeader(header, dkim.headerCanonicalization) + "\r\n"
+
+      val header = headerStacks.get(headerName.toLowerCase).flatMap(safePop)
+      if (header.isDefined)
+        result += processHeader(header.get, dkim.headerCanonicalization) + "\r\n"
     }
 
     // Add the dkim header at the end (we have to remove the signature field (b=...) )
