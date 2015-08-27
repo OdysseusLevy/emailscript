@@ -1,6 +1,6 @@
 package org.emailscript.mail.dkim
 
-import java.io.InputStream
+import java.io.{InputStream}
 import java.security.{MessageDigest, Signature}
 import javax.mail.internet.MimeMessage
 
@@ -82,30 +82,18 @@ object DkimVerifier {
       bytes(index) == '\r' && bytes(index + 1) == '\n'
   }
 
-  def getBody(email: MimeMessage, dkim: DkimSignature): Body = {
-    var length: Int = if (dkim.bodyLength > 0) dkim.bodyLength else email.getSize
+  def simpleBodyFormat(is: InputStream, buffer: Array[Byte], length: Int): Int = {
 
-    val body = new Array[Byte](length + 2)
+    var byte: Int = is.read()
+    var count = 0
 
-    if (dkim.bodyCanonicalization == DkimSignature.Relaxed)
-      length = relaxedBodyFormat(email.getInputStream, body, length)
-    else
-      length = email.getInputStream.read(body, 0, length)
-
-    // Ensure that the body has a CRLF at the end
-
-    if(!hasCRLF(body, length -2)){
-      body(length) = '\r'
-      body(length+1) = '\n'
-      length += 2
+    while ( (count < length) && (byte != -1)) {
+      buffer(count) = byte.toByte
+      count += 1
+      byte = is.read()
     }
 
-    // Remove any duplicate CRLF's at the end
-
-    val deleteme = length
-    length = ignoreExtraEndLines(body, length)
-
-    Body(body, length)
+    count
   }
 
   def verifyBody(email: MimeMessage, dkim: DkimSignature): Boolean = {
@@ -114,10 +102,14 @@ object DkimVerifier {
 
     val body = new Array[Byte](length + 2)
 
+    //
+    // Pull in the body, using a single pass
+    //
+
     if (dkim.bodyCanonicalization == DkimSignature.Relaxed)
-      length = relaxedBodyFormat(email.getInputStream, body, length)
+      length = relaxedBodyFormat(email.getRawInputStream, body, length)
     else
-      length = email.getInputStream.read(body, 0, length)
+      length = simpleBodyFormat(email.getRawInputStream, body, length)
 
     // Ensure that the body has a CRLF at the end
 
@@ -129,7 +121,6 @@ object DkimVerifier {
 
     // Remove any duplicate CRLF's at the end
 
-    val deleteme = length
     length = ignoreExtraEndLines(body, length)
 
 
@@ -157,22 +148,26 @@ object DkimVerifier {
     bsenc.encode(md.digest)
   }
 
-  def removeTab(ch: Char) = if (ch == '\t') ' ' else ch
+  def removeTab(ch: Int) = if (ch == '\t') ' '.toInt else ch
 
+
+  /**
+   * Put the message body into relaxed format.
+   *
+   * Message bodies can be potentially quite large so for efficiency we want to do this running through
+   * the body just one time
+   */
   def relaxedBodyFormat(is: InputStream,  bytes: Array[Byte], length: Int): Int = {
 
     var outCount = 0
-    var current = is.read()
+    var current = removeTab(is.read())
 
-    while(current > 0 && outCount < length){
+    while(current >= 0 && outCount < length){
 
-      val next = is.read()
+      val next = removeTab(is.read())
 
-      val nextCh = removeTab(next.toChar)
-      val char = removeTab(current.toChar)
-
-      if (char != ' ' || !(nextCh == ' '|| nextCh == '\r')){
-        bytes(outCount) = char.toByte
+      if (current != ' ' || !(next == ' ' || next == '\r')){
+        bytes(outCount) = current.toByte
         outCount += 1
       }
 

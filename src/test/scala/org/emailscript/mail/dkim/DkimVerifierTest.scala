@@ -102,7 +102,7 @@ class DkimVerifierTest extends FlatSpec with Matchers {
 
   "relaxedBodyFormat" should "correctly remove whitespace for whole body" in {
 
-    val text = "  C \r\n\r\n   D\tE \r\n"
+    val text = "  C \r\n\r\n   D \tE\t\r\n"
     val expected = " C\r\n\r\n D E\r\n"
 
     val input = new ByteArrayInputStream(text.getBytes)

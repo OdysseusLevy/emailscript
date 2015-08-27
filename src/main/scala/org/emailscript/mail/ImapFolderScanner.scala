@@ -47,7 +47,7 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
 
           // Perform a NOOP just to keep alive the connection
           logger.info("Performing a NOOP to keep the connection alive")
-          MailUtils.ensureOpen(folder)
+          MailUtils.ensureOpen(account, folder)
           folder.doCommand(noopCommand)
         }
         catch {
@@ -74,12 +74,12 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
 
     keepAlive.start()
 
-    // Now got to sleep until the mail server wakes us up
+    // Now go to sleep until the mail server wakes us up
 
     while (!Thread.interrupted()) {
       logger.debug("Starting IDLE")
       try {
-        MailUtils.ensureOpen(folder)
+        MailUtils.ensureOpen(account, folder)
 
         folder.idle(true)
         logger.debug("returning from idle")
@@ -89,6 +89,10 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
       catch {
         case closed: FolderClosedException =>
           logger.warn(s" Folder ${folder.getName} is closed. isOpen: ${folder.isOpen}", closed)
+        case error: javax.mail.StoreClosedException =>
+          logger.warn(s" The javamail Store for Folder ${folder.getName} is closed", error)
+        case error: javax.mail.FolderClosedException =>
+          logger.warn(s" Folder ${folder.getName} is closed", error)
         case e: Throwable =>
           logger.error(s"Error running scanning callback on folder: ${folder.getName}", e)
           keepAlive.interrupt() //we want both threads to stop now

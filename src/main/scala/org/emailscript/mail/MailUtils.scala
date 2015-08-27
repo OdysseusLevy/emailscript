@@ -1,6 +1,7 @@
 package org.emailscript.mail
 
 import java.io.{FileOutputStream, File}
+import java.time.Duration
 import java.util.{Date, Properties}
 import javax.mail.Flags.Flag
 import javax.mail._
@@ -32,9 +33,22 @@ object MailUtils {
   lazy val defaultPermissions = if (dryRun) Folder.READ_ONLY else Folder.READ_WRITE
 
 
-  def ensureOpen(folder: Folder) = {
+  /**
+   * Try to restore closed connections
+   */
+  def ensureOpen(account: EmailAccount, folder: Folder) = {
+
+    val sleepTime = Duration.ofSeconds(10).toMillis // We need to give the server time to recover before we try again
+
+    if (!folder.getStore.isConnected) {
+      logger.warn(s"reopening store connected to: ${folder.getName}")
+      Thread.sleep(sleepTime)
+      folder.getStore.connect(account.getImapHost, account.getUser, account.getPassword)
+    }
+
     if (!folder.isOpen){ //Just in case we get timed out
       logger.warn(s"reopening folder: ${folder.getName}")
+      Thread.sleep(sleepTime)
       folder.open(MailUtils.defaultPermissions)
     }
   }
