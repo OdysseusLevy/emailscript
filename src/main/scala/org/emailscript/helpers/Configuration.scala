@@ -1,52 +1,30 @@
 package org.emailscript.helpers
 
-import java.io.{File, FileReader}
-import java.util.Properties
+import java.io.{Reader}
 import javax.script.Bindings
 
 import org.emailscript.api._
+import org.emailscript.api.Named
+
 import com.google.common.base.Strings
-import com.google.common.io.Files
-import org.slf4j.LoggerFactory
 
 
 /**
  * Responsible for pulling in configuration information.
  *
- * Looks for files ending with *.imap for imap email accounts
+ * Reads in all .yml files in the config directory
  */
 object Configuration {
 
-  val Accounts = "config"
+  lazy val configs: Map[String, AnyRef] = loadConfigs
+  val AccountsDir = "config"
+  val DataDir = "data"
+
   val DataName = "Data"
   val LoggerName = "logger"
   val HelperName = "Helper"
-  val SearchName = "Search"
 
-  val homeDir = new File(".")
-
-  def getFiles(folderName: String, suffix: String): Stream[File] = {
-    val folder = new File(folderName)
-    if (!folder.exists()){
-      folder.mkdir()
-    }
-
-    folder.listFiles.toStream.filter(_.getName.endsWith(suffix))
-  }
-
-  def stripSuffix(name: String) = {
-    val index = name.lastIndexOf(".")
-    if (index < 0)
-      name
-    else
-      name.substring(0, index)
-  }
-
-  def getProperties(file: File): Properties = {
-    val props = new Properties()
-    props.load(new FileReader(file))
-    props
-  }
+  val yaml = Yaml(AccountsDir)
 
   def addObjects(scope: Bindings): Unit = {
 
@@ -54,44 +32,55 @@ object Configuration {
 
     // Add some helpers
 
-    scope.put(DataName, Yaml())
+    scope.put(DataName, yaml)
     scope.put(LoggerName, LoggerFactory.getLogger("script"))
     scope.put(HelperName, new Helper(scope))
-
-    scope.put(SearchName, new Search(homeDir))
   }
 
-  private def readBean(file: File): Option[(String,AnyRef)]= {
+  private def getName(obj: AnyRef, default: String) = {
 
-    val NickName = "nickname"
+    obj match {
+      case named: Named if (!Strings.isNullOrEmpty(named.getNickname)) => named.getNickname
+      case map: java.util.Map[String, AnyVal] if (map.containsKey(Named.Nickname)) => map.get(Named.Nickname).toString
+      case _ =>default
+    }
+  }
 
-    val data = Yaml.readFromFile(file)
+  def getConfigFromReader(defaultName: String, reader: Reader): Option[(String,AnyRef)]={
+    val data = yaml.read(reader)
+    getConfig(defaultName, data)
+  }
+
+  def getConfig(defaultName: String, data: Option[AnyRef]): Option[(String,AnyRef)] = {
+
     data match {
 
-      case Some(namedBean: NamedBean) => {
-        if (Strings.isNullOrEmpty(namedBean.getNickname))
-          namedBean.setNickname(Files.getNameWithoutExtension(file.getName))
-        Option(namedBean.getNickname -> namedBean)
-      }
-      case Some(map: java.util.Map[String, AnyRef]) if (map.containsKey(NickName)) =>
-        val nickName = map.get(NickName)
-        if (nickName == null || nickName.toString == "")
-          map.put(NickName, Files.getNameWithoutExtension(file.getName))
-        Option(map.get(NickName).toString -> map)
-
+      case Some(i: Importer) => Some(getName(i, defaultName) -> i.doImport)
+      case Some(a: AnyRef) => Some(getName(a, defaultName) -> a)
       case _ => None
     }
   }
 
+  private def loadConfigs(): Map[String, AnyRef] = {
+    var result = Map[String, AnyRef]()
+    val fileHandler = FileHandler(AccountsDir, Yaml.ymlExtension)
+
+    for( (name, reader) <- fileHandler.getAllReaders(); (finalName, data) <- getConfigFromReader(name, reader)){
+      if (result.contains(finalName))
+        throw new RuntimeException(s"Found two config beans with the same nickname: ${finalName}; first: $data, second: ${result.get(finalName)}")
+
+      result += (finalName -> data)
+    }
+
+    result
+  }
+
   def addConfig(scope: Bindings): Unit = {
 
-    getFiles(Accounts, ".yml").flatMap(readBean(_)).foreach { case (name: String, value: AnyRef) =>
-
-      if (scope.get(name) != null)
-        throw new RuntimeException(s"Found two config beans with the same nickname: ${name}; first: $value, second: ${scope.get(name)}")
-
-      scope.put(name, value)
+    configs.foreach{ case (name: String, config: AnyRef) =>
+      scope.put(name, config)
     }
+
   }
 
 }

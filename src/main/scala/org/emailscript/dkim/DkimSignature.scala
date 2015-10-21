@@ -1,6 +1,6 @@
-package org.emailscript.mail.dkim
+package org.emailscript.dkim
 
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
 
 object DkimSignature {
 

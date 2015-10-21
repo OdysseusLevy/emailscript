@@ -1,6 +1,8 @@
 nickname: MailRules
 
-Hardcore: false 
+Hardcore: true 
+BulkFolder: Bulk
+SpamFolder: Junk
 
 CategoryRules:
     - subjectContains: Emailscript
@@ -11,8 +13,6 @@ CategoryRules:
       category: friends
     - subjectContains: Ulysses
       category: friends
-
-Spam: Junk
 
 Categories:
     Emailscript:

@@ -3,9 +3,10 @@ package org.emailscript.api
 import java.net.URL
 import java.util.Date
 
+import org.emailscript.dkim.DkimResult
 import org.emailscript.dnsbl.DnsblResult
 import org.emailscript.mail.MailMessageHelper
-import org.emailscript.mail.dkim.DkimResult
+
 import scala.collection.JavaConverters._
 
 /**
@@ -17,7 +18,7 @@ import scala.collection.JavaConverters._
  *  - Check for spam links
  *  - Dkim verification (authenticates headers and body)
  */
-class MailMessage(helper: MailMessageHelper) {
+class Email(helper: MailMessageHelper) {
 
   /**
    * Email subject
@@ -99,9 +100,18 @@ class MailMessage(helper: MailMessageHelper) {
   def getHeaders(): java.util.Map[String, String] = helper.headers.asJava
 
   /**
+   * Attachments
+   */
+  def getAttachments(): Array[Attachment] = helper.attachments
+
+  /**
    * Message size in bytes
    */
   def getSize(): Int = helper.size
+
+  //
+  // DKIM stuff
+  //
 
   /**
    * Do a full DKIM verification of both the headers and the body
@@ -164,6 +174,11 @@ class MailMessage(helper: MailMessageHelper) {
   //
 
   /**
+   * Debugging utility
+   */
+  def dumpStructure(): Unit = helper.dumpStructure
+
+  /**
    * Check if this email was sent to the given email
    * @param email
    */
@@ -190,6 +205,6 @@ class MailMessage(helper: MailMessageHelper) {
 
 }
 
-object MailMessage {
-  def apply(helper: MailMessageHelper) = new MailMessage(helper)
+object Email {
+  def apply(helper: MailMessageHelper) = new Email(helper)
 }

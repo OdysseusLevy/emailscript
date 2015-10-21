@@ -2,12 +2,13 @@ package org.emailscript.api
 
 import java.io.StringWriter
 import java.text.DecimalFormat
-import java.time.{LocalDate}
+import java.time.LocalDate
 import javax.script.Bindings
 
 import com.github.mustachejava.DefaultMustacheFactory
 import org.emailscript.helpers.DnsHelper
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
+
 import scala.collection.JavaConverters._
 
 object Helper {
@@ -46,6 +47,22 @@ class Helper( scope: Bindings ) {
    * @param params list of parameters that are expected
    */
   def requires(params: java.util.Collection[String]): Unit = requires(params.asScala)
+
+
+  /**
+   * Creates a who object to work with
+   * @param email
+   * @return
+   */
+  def who(email: String): Who = who(email, "")
+
+  /**
+   * Creates a who object to work with
+   * @param email
+   * @param name
+   * @return
+   */
+  def who(email: String, name: String): Who = Who(name, email)
 
   /**
    * You can do text formatting using mustache templates

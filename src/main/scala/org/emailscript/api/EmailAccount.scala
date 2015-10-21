@@ -1,7 +1,51 @@
 package org.emailscript.api
 
 import java.util.{Date, Properties}
-import org.emailscript.mail.{MailUtils}
+
+import org.emailscript.helpers.Importer
+import org.emailscript.mail.MailUtils
+
+import scala.beans.BeanProperty
+
+/**
+ * Used to configure an EmailAccount
+ */
+class EmailAccountBean extends NamedBean with Importer{
+
+  def doImport(): AnyRef = {
+    EmailAccount(this)
+  }
+  /**
+   * Server used to receive mail (using the IMAP protocol). For example gmail uses: imap.gmail.com
+   * @group Properties
+   */
+  @BeanProperty var imapHost: String = ""
+
+  /**
+   * Optional, Advanced property -- usually the default will work
+   * @group Properties
+   */
+  @BeanProperty var imapPort: Int = -1
+
+  /**
+   * Set user name. For example a gmail user name would be something like myname@gmail.com
+   * @group Properties
+   */
+  @BeanProperty var user: String = ""
+
+  /**
+   * Password (assumed to work with both imap and smtp)
+   * @group Properties
+   */
+  @BeanProperty var password: String = ""
+
+  /**
+   * Server used to send out email. For example gmail uses smtp.gmail.com
+   * @group Properties
+   */
+  @BeanProperty var smtpHost: String = ""
+  @BeanProperty var smtpPort: Int = 465
+}
 
 /**
  * ==Features==
@@ -25,91 +69,14 @@ import org.emailscript.mail.{MailUtils}
  * }}}
  *
  */
-class EmailAccount extends NamedBean with ValuesImmutableBean {
-
-  //
-  // Bean interface
-  //
-
-  /**
-   * Set imap server address. For example gmail uses: imap.gmail.com
-   * @group Properties
-   */
-  def setImapHost(imapHost: String): Unit = set('ImapHost, imapHost)
-
-  /**
-   * Get imap server address
-   * @group Properties
-   */
-  def getImapHost(): String = getOrElse('ImapHost, "")
-
-  /**
-   * Set user name. For example a gmail user name would be something like myname@gmail.com
-   * @group Properties
-   */
-  def setUser(user: String): Unit = set('User, user)
-
-  /**
-   * Get user name
-   *  @group Properties
-   */
-  def getUser: String = getOrElse('User, "")
-
-  /**
-   * Set password
-   * @group Properties
-   */
-  def setPassword(password: String): Unit = set('Password, password)
-
-  /**
-   * Get password
-   * @group Properties
-   */
-  def getPassword(): String = getOrElse('Password, "")
-  
-  /**
-   * Optional, Advanced property -- usually the default will work
-   * @group Properties
-   */
-  def setImapPort(port: Int): Unit = set('ImapPort, port)
-
-  /**
-   * Optional, Advanced property -- usually the default will work
-   * @group Properties */
-  def getImapPort(): Int = getOrElse('ImapPort, -1)
-
-  /**
-   * Smtp server address. For example gmail uses smtp.gmail.com
-   * @group Properties
-   */
-  def setSmtpHost(host: String): Unit = set('SmtpHost, host)
-
-  /**
-   * Smtp server address.
-   * @group Properties*/
-  def getSmtpHost(): String = getOrElse('SmtpHost, "")
-
-  /**
-   * [Optional] Advanced property -- usually the default will work
-   * @group Properties
-   */
-  def setSmtpPort(port: Int): Unit = set('SmtpPort, port)
-
-  /**
-   * [Optional] Advanced property -- usually the default will work
-   * @group Properties */
-  def getSmtpPort(): Int = getOrElse('SmtpPort, 465)
-
-
-  //
-  // Methods
-  //
+class EmailAccount(val user: String, val password: String, val imapHost: String, val imapPort: Int,
+                   val smtpHost: String, val smtpPort: Int) {
 
   /**
    * Create an email object that can be sent
    * @group Functions
    */
-  def newMail() = EmailBean(getUser)
+  def newMail() = EmailBean(user)
 
   /**
    * Send an email
@@ -148,18 +115,55 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
    */
   def readLatest(folderName: String, callback: ScriptCallback): Unit = MailUtils.readLatest(this, folderName, callback)
 
+  def process(emails: Array[Email], script: ProcessCallback): Unit = {
+    emails.foreach(script.callback(_))
+  }
+
+  /**
+   * Runs a script against all inbox emails
+   */
+  def process(script: ProcessCallback): Unit = process(getEmails(), script)
+
+  /**
+   * Runs a script against a list of emails with the given uid
+   * @param ids
+   * @param script
+   */
+  def process(ids: java.util.ArrayList[Number], script:ProcessCallback): Unit = process(getEmails(ids), script)
+
+  /**
+   * Runs a script against a given folder
+   * @param folderName
+   */
+  def process(folderName: String, script: ProcessCallback): Unit = process(getEmails(folderName), script)
+
+  /**
+   * Runs a script against a given folder and limit of how many
+   * @param folderName
+   * @param limit
+   * @param script
+   */
+  def process(folderName: String, limit: Int, script: ProcessCallback): Unit = process(getEmails(folderName, limit), script)
+
   /**
    * Read all messages from Inbox
    * @group Functions
    */
-  def getEmails(): Array[MailMessage] = getEmails("Inbox", 0)
+  def getEmails(): Array[Email] = getEmails("Inbox", 0)
 
   /**
    * Get emails from Inbox
    * @param limit use this to limit how many messages. Eg. a limit of 10 will return the latest 10 messages. 0 returns all messages
    * @group Functions
    */
-  def getEmails(limit: Int): Array[MailMessage] = getEmails("Inbox", limit)
+  def getEmails(limit: Int): Array[Email] = getEmails("Inbox", limit)
+
+  /**
+   * Get specific emails by id
+   * @param ids uid's for the desired mails
+   */
+  def getEmails(ids: java.util.ArrayList[Number]): Array[Email] = getEmails("Inbox", ids)
+
 
   /**
    * Return all emails before a given date
@@ -182,7 +186,7 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
    * @param folderName
    * @group Functions
    */
-  def getEmails(folderName: String): Array[MailMessage] = getEmails(folderName, 0)
+  def getEmails(folderName: String): Array[Email] = getEmails(folderName, 0)
 
   /**
    * Get emails from a specified folder with a specified limit
@@ -191,7 +195,9 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
    * @param limit
    * @group Functions
    */
-  def getEmails(folderName: String, limit: Int): Array[MailMessage] = MailUtils.getEmails(this, folderName, limit)
+  def getEmails(folderName: String, limit: Int): Array[Email] = MailUtils.getEmails(this, folderName, limit)
+
+  def getEmails(folderName: String, ids: java.util.ArrayList[Number]) = MailUtils.getEmails(this, folderName, ids)
 
   /**
    *
@@ -199,7 +205,7 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
    * @param startUID
    * @group Functions
    */
-  def getEmailsAfter(folderName: String, startUID: java.lang.Long): Array[MailMessage] = {
+  def getEmailsAfter(folderName: String, startUID: java.lang.Long): Array[Email] = {
     MailUtils.getEmailsAfter(this, folderName, startUID)
   }
 
@@ -208,7 +214,7 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
    *
    * @group Functions
    */
-  def isGmail() = getUser.endsWith("gmail.com")
+  def isGmail() = user.endsWith("gmail.com")
 
   //
   // Folder support
@@ -232,7 +238,7 @@ class EmailAccount extends NamedBean with ValuesImmutableBean {
 object EmailAccount {
 
   private val Trash = "Trash"
-  private val GmailTrash = "Deleted Messages"
+  private val GmailTrash = "[Gmail]/Trash"
 
   def trashFolder(account: EmailAccount): String = {
     if (account.isGmail())
@@ -259,8 +265,12 @@ object EmailAccount {
     "[Gmail]/" + name
   }
 
-  def apply(imapHost: String, user: String, password: String, smtpHost: String): EmailAccount = {
-    val bean = new EmailAccount
+  def apply(bean: EmailAccountBean) = {
+    new EmailAccount(bean.getUser, bean.getPassword, bean.getImapHost, bean.getImapPort, bean.getSmtpHost, bean.getSmtpPort)
+  }
+
+  def createBean(imapHost: String, user: String, password: String, smtpHost: String): EmailAccountBean = {
+    val bean = new EmailAccountBean
     bean.setImapHost(imapHost)
     bean.setUser(user)
     bean.setPassword(password)
@@ -269,13 +279,13 @@ object EmailAccount {
     bean
   }
 
-  def toSmtpProperties(bean: EmailAccount):Properties = {
+  def toSmtpProperties(account: EmailAccount):Properties = {
     val props = new Properties()
-    props.put("mail.smtp.host", bean.getSmtpHost())
-    props.put("mail.smtp.socketFactory.port", bean.getSmtpPort().toString)
+    props.put("mail.smtp.host", account.smtpHost)
+    props.put("mail.smtp.socketFactory.port", account.smtpPort.toString)
     props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory")
     props.put("mail.smtp.auth", "true")
-    props.put("mail.smtp.port", bean.getSmtpPort().toString)
+    props.put("mail.smtp.port", account.smtpPort.toString)
     props
   }
 }

@@ -8,8 +8,9 @@ import javax.mail._
 
 import com.sun.mail.imap.IMAPMessage
 import org.emailscript.api.{EmailAccount, Who}
+import org.emailscript.dkim.DkimVerifier
 import org.emailscript.dnsbl._
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
 
 import scala.collection.JavaConverters._
 
@@ -54,17 +55,17 @@ class MailMessageHelper(val account: EmailAccount, val message: IMAPMessage, dns
   lazy val folder = message.getFolder.getName
   lazy val isRead = message.isSet(Flags.Flag.SEEN)
   lazy val uid: Long = MailUtils.getUID(message.getFolder, message)
-  lazy val body: String = MailUtils.getBodyText(message).getOrElse("")
+  lazy val body: String = MimePart.getBodyText(message).getOrElse("")
   lazy val urls: Set[URL] = SpamUrlParser.findUrls(body)
   lazy val spamLink: DnsblResult = SpamUrlParser.findSpamLink(urls, dnsbl)
   lazy val hasSpamLink: Boolean = spamLink != DnsblResult.empty
   lazy val headers = MailMessageHelper.getHeaders(message)
   lazy val size = message.getSize
-  lazy val dkimResult = dkim.DkimVerifier.verify(this.message)
-  lazy val dkimHeader = dkim.DkimVerifier.verifyHeaders(this.message)
+  lazy val dkimResult = DkimVerifier.verify(this.message)
+  lazy val dkimHeader = DkimVerifier.verifyHeaders(this.message)
   lazy val verifiedHost = if (dkimHeader.isDefined) dkimHeader.get.domain else ""
+  lazy val attachments = MimePart.getAttachments(this.message).toArray
   lazy val moveHeader: Option[String] = {
-
     val result = MailMessageHelper.fetchOneHeader(message, MailUtils.MoveHeader)
     if (result == null || result.size == 0)
       None
@@ -72,7 +73,7 @@ class MailMessageHelper(val account: EmailAccount, val message: IMAPMessage, dns
       Option(result(0))
   }
 
-  def dumpStructure = MailUtils.dumpStructure(message)
+  def dumpStructure = MimePart.dumpStructure(message)
 
   //
   // Time stuff

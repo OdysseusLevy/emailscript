@@ -7,7 +7,7 @@ import com.sun.mail.imap.IMAPFolder
 import com.sun.mail.imap.IMAPFolder.ProtocolCommand
 import com.sun.mail.imap.protocol.IMAPProtocol
 import org.emailscript.api.{EmailAccount, ScriptCallback}
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
 
 
 /**

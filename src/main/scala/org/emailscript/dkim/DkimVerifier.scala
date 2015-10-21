@@ -1,15 +1,14 @@
-package org.emailscript.mail.dkim
+package org.emailscript.dkim
 
-import java.io.{InputStream}
+import java.io.InputStream
 import java.security.{MessageDigest, Signature}
 import javax.mail.internet.MimeMessage
 
-import org.emailscript.helpers.DnsHelper
-import org.emailscript.mail.dkim.DkimVerifier.HeaderStack
-import org.slf4j.LoggerFactory
-import sun.misc.{BASE64Encoder, BASE64Decoder}
-import collection.JavaConverters._
+import org.emailscript.dkim.DkimVerifier.HeaderStack
+import org.emailscript.helpers.{DnsHelper, LoggerFactory}
+import sun.misc.{BASE64Decoder, BASE64Encoder}
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 case class Body(bytes: Array[Byte], length: Int)
@@ -254,8 +253,8 @@ object DkimVerifier {
  *
  */
 class DkimVerifier(dkim: DkimSignature, headerStacks: HeaderStack, dnsHelper: DnsHelper = new DnsHelper) {
-  import DkimVerifier._
   import DkimSignature.{DkimHeader, Relaxed}
+  import DkimVerifier._
 
   def verifyHeaders(): DkimResult = {
 
@@ -284,7 +283,7 @@ class DkimVerifier(dkim: DkimSignature, headerStacks: HeaderStack, dnsHelper: Dn
         new DkimResult("Success", dkim)
       else{
         logger.debug(s"signature: ${dkim.rawSignature}")
-        new DkimResult("Signature did not validate")
+        new DkimResult("Headers signature did not validate")
       }
     } catch {
       case t: Throwable => logger.debug("verifyHost error", t); new DkimResult(t.getMessage)

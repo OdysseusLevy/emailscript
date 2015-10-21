@@ -3,7 +3,7 @@ package org.emailscript.dnsbl
 import java.net.URL
 
 import org.apache.commons.lang3.StringEscapeUtils
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
 
 object SpamUrlParser {
 
@@ -68,7 +68,7 @@ object SpamUrlParser {
     val suspectUrls = urls.filterNot(okToSkip)
     for(url <- suspectUrls) {
 
-      logger.debug("checking dnsbl: {}", url)
+      logger.debug(s"checking dnsbl: $url")
       val record = dnsbl.checkDNBSL(url.getHost)
       if (record != DnsblResult.empty)
         return record

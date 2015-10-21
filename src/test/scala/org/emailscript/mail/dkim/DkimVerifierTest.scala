@@ -1,8 +1,8 @@
-package org.emailscript.mail.dkim
+package org.emailscript.dkim
 
 import java.io.ByteArrayInputStream
 
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 
 object DkimVerifierTest {
 

@@ -4,7 +4,6 @@ import java.io.{File, FileReader}
 import javax.script.ScriptEngineManager
 
 import com.google.common.io.Files
-import org.slf4j.LoggerFactory
 
 /**
  * Run scripts

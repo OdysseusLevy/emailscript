@@ -1,4 +1,4 @@
-package org.emailscript.mail.dkim
+package org.emailscript.dkim
 
 import org.scalatest.{FlatSpec, Matchers}
 

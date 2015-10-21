@@ -1,11 +1,10 @@
-package org.emailscript.mail.dkim
+package org.emailscript.dkim
 
 import java.security.spec.X509EncodedKeySpec
 import java.security.{KeyFactory, PublicKey}
 import java.util.Base64
 
-import org.emailscript.helpers.DnsHelper
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.{DnsHelper, LoggerFactory}
 
 object DkimDnsLookup {
   val logger = LoggerFactory.getLogger(getClass)

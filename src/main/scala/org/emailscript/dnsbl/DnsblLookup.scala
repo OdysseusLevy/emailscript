@@ -1,6 +1,6 @@
 package org.emailscript.dnsbl
 
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
 import org.xbill.DNS._
 
 import scala.collection.mutable.Map
@@ -37,7 +37,7 @@ abstract class DnsblLookup {
     }
     catch {
       case e: Throwable => {
-        logger.warn("problem with looking up host: " + host + "error: " + e.getMessage)
+        logger.warn(s"problem with looking up host: $host error: ${e.getMessage}")
         DnsblResult.empty
       }
     }

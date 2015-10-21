@@ -1,7 +1,8 @@
 package org.emailscript.mail
 
-import java.io.{FileOutputStream, File}
+import java.io.{File, FileOutputStream}
 import java.time.Duration
+import java.util
 import java.util.{Date, Properties}
 import javax.mail.Flags.Flag
 import javax.mail._
@@ -11,9 +12,9 @@ import javax.mail.search.{ComparisonTerm, ReceivedDateTerm}
 import com.sun.mail.imap.{IMAPFolder, IMAPMessage}
 import com.sun.mail.pop3.POP3Folder
 import org.emailscript.api._
-import org.emailscript.helpers.{Yaml, Values, Tags}
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.{Configuration, LoggerFactory, Tags, Values, Yaml}
 
+import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
 
 /**
@@ -21,7 +22,7 @@ import scala.collection.immutable.HashMap
  */
 object MailUtils {
 
-  val yaml = Yaml()
+  val yaml = Yaml(Configuration.DataDir)
   val MoveHeader = "Mailscript-Move"
   val logger = LoggerFactory.getLogger(getClass)
   val defaultFetchProfile = createDefaultFetchProfile()
@@ -43,7 +44,7 @@ object MailUtils {
     if (!folder.getStore.isConnected) {
       logger.warn(s"reopening store connected to: ${folder.getName}")
       Thread.sleep(sleepTime)
-      folder.getStore.connect(account.getImapHost, account.getUser, account.getPassword)
+      folder.getStore.connect(account.imapHost, account.user, account.password)
     }
 
     if (!folder.isOpen){ //Just in case we get timed out
@@ -70,7 +71,7 @@ object MailUtils {
     logger.info(s"sending email to ${messageBean.getTo}")
     val session = Session.getInstance(EmailAccount.toSmtpProperties(account))
     val message = messageBean.toMessage(session)
-    Transport.send(message, account.getUser, account.getPassword)
+    Transport.send(message, account.user, account.password)
   }
 
   private def openFolder(folder: Folder, permissions: Int = defaultPermissions) = {
@@ -121,7 +122,7 @@ object MailUtils {
 
   def getEmails(account: EmailAccount, messages: Array[Message], folder: Folder) = {
     fetch(messages, folder)
-    messages.map { case m:IMAPMessage => MailMessage(new MailMessageHelper(account, m))}
+    messages.map { case m:IMAPMessage => Email(new MailMessageHelper(account, m))}
   }
 
   def getEmailsBefore(account: EmailAccount, folderName: String, date: java.util.Date) = {
@@ -142,7 +143,7 @@ object MailUtils {
     getEmails(account, emails, folder)
   }
 
-  def getEmails(account: EmailAccount, folderName: String, limit:Int = 0): Array[MailMessage] = {
+  def getEmails(account: EmailAccount, folderName: String, limit:Int = 0): Array[Email] = {
 
     val mailFolder = openFolder(account, folderName)
     val start = if (limit <= 0 || limit >= mailFolder.getMessageCount) 1 else mailFolder.getMessageCount - limit + 1
@@ -152,12 +153,18 @@ object MailUtils {
     getEmails(account, messages, mailFolder)
   }
 
-  def getEmailsAfter(account: EmailAccount, folderName: String, startUID: java.lang.Long): Array[MailMessage] = {
+  def getEmails(account: EmailAccount, folderName: String, ids: util.ArrayList[Number]): Array[Email] = {
+    val folder = openFolder(account, folderName).asInstanceOf[IMAPFolder] //TODO time to fess up and change all Folders to IMAPFolder
+    val messages = ids.asScala.toArray.map{id => folder.getMessageByUID(id.longValue())}
+    getEmails(account, messages, folder)
+  }
+
+  def getEmailsAfter(account: EmailAccount, folderName: String, startUID: java.lang.Long): Array[Email] = {
     val folder = openFolder(account, folderName).asInstanceOf[IMAPFolder]
     getEmailsAfter(account, folder, startUID)
   }
 
-  def getEmailsAfter(account: EmailAccount, folder: IMAPFolder, startUID: java.lang.Long): Array[MailMessage]  = {
+  def getEmailsAfter(account: EmailAccount, folder: IMAPFolder, startUID: java.lang.Long): Array[Email]  = {
     val start: Long  =  if (startUID == null || startUID < 0) 0  else startUID
     val messages = folder.getMessagesByUID(start + 1, UIDFolder.LASTUID)
 
@@ -165,7 +172,7 @@ object MailUtils {
 
     // Get rid of final message (JavaMail insists on including the very last message when using LASTUID)
     val filtered = messages.filter{ m: Message => m.getFolder.asInstanceOf[UIDFolder].getUID(m) > start }
-    filtered.map { case m:IMAPMessage => MailMessage(new MailMessageHelper(account, m))}
+    filtered.map { case m:IMAPMessage => Email(new MailMessageHelper(account, m))}
   }
 
   def moveTo(toFolderName: String, m: MailMessageHelper) {
@@ -196,7 +203,7 @@ object MailUtils {
   protected def connect(account: EmailAccount): Store = {
     val session: Session = Session.getDefaultInstance(new Properties(), null)
     val store = session.getStore("imaps") //For now at least, only support ssl connections
-    store.connect(account.getImapHost, account.getUser, account.getPassword)
+    store.connect(account.imapHost, account.user, account.password)
     accounts = accounts + (account -> store)
     store
   }
@@ -299,54 +306,4 @@ object MailUtils {
     }
   }
 
-  def dumpStructure(part: Part, prefix: String = ""): Unit ={
-
-    logger.info(s"$prefix${part.getContentType()}")
-
-    if (part.isMimeType("multipart/*")){
-      val multi = part.getContent.asInstanceOf[Multipart]
-      for(i <- 0 until multi.getCount ) {
-        val mp = multi.getBodyPart(i)
-          dumpStructure(mp, prefix + "\t")
-      }
-    }
-  }
-
-  def getMultiPartText(multi: Multipart): Option[String] = {
-
-    for(i <- 0 until multi.getCount) {
-      val part = multi.getBodyPart(i)
-
-      if (part.isMimeType("text/*"))
-        return Option(part.getContent.toString)
-
-      val result = getBodyText(part)
-      if (result.isDefined)
-        return result
-    }
-
-    None
-  }
-
-    /**
-     * Simplified algorithm for extracting a message's text. When presented with alternatives it will always
-     * choose the 'preferred' format (which turns out to be body)
-     *
-     * Note that with complicated formats (such as lots of attachments with text interspersed between them) it will
-     * simply return the first text block it finds
-     *
-     * @return null if no text is found
-     */
-  def getBodyText(part: Part): Option[String] = {
-
-    part.getContent match {
-      case text: String => Option(text)
-      case multi: Multipart =>
-        if (part.isMimeType("multipart/alternative"))
-          getBodyText(multi.getBodyPart(multi.getCount -1)) // the last one is the 'preferred' version
-         else
-          getMultiPartText(multi)
-      case _ => None
-    }
-  }
 }

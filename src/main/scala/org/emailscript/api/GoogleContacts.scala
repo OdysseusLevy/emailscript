@@ -5,10 +5,30 @@ import java.net.URL
 import com.google.gdata.client.contacts.ContactsService
 import com.google.gdata.data.PlainTextConstruct
 import com.google.gdata.data.contacts.{GroupMembershipInfo, ContactEntry, ContactFeed, ContactGroupFeed}
-import com.google.gdata.data.extensions.{Email, FullName, Name}
-import org.slf4j.LoggerFactory
+import com.google.gdata.data.extensions.{Email => GoogleEmail, FullName, Name}
+import org.emailscript.helpers.Importer
+import org.emailscript.helpers.LoggerFactory
 import scala.beans.BeanProperty
 import scala.collection.JavaConverters._
+
+/**
+ * Used to configure a GoogleContacts account
+ */
+class GoogleContactsBean extends NamedBean with Importer {
+
+  def doImport() = GoogleContacts(account, password)
+  /**
+   * user account, typically your email eg; myname@gmail.com
+   * @group Properties
+   */
+  @BeanProperty var account: String = ""
+
+  /**
+   * user password
+   * @group Properties
+   */
+  @BeanProperty var password: String = ""
+}
 
 /**
  * Simple GoogleContacts api.
@@ -32,42 +52,18 @@ import scala.collection.JavaConverters._
  *
  */
 
-class GoogleContacts() extends NamedBean with ValuesImmutableBean  {
+class GoogleContacts(val account: String, val password: String) {
 
   import GoogleContacts._
 
-  private lazy val service: ContactsService = GoogleContacts.getService(getAccount, getPassword)
-  private lazy val groupHrefToName = getGroupMap(service, getAccount)
+  private lazy val service: ContactsService = GoogleContacts.getService(account, password)
+  private lazy val groupHrefToName = getGroupMap(service, account)
   private lazy val groupNameToHref = groupHrefToName.map { entry => (entry._2, entry._1) }.toMap
-  private lazy val contacts: List[GoogleContact] = loadContacts(service, getAccount, groupHrefToName)
+  private lazy val contacts: List[GoogleContact] = loadContacts(service, account, groupHrefToName)
   private lazy val emails: Set[String] = {
     val entries = for {contact <- contacts; email <- contact.emails.asScala} yield email.toLowerCase
     entries.toSet
   }
-
-  //
-  // Bean interface
-  //
-
-  /**
-   * user account, typically your email eg; myname@gmail.com
-   * @group Properties
-   */
-  def setAccount(account: String): Unit = set('Account, account)
-  /** @group Properties */
-  def getAccount(): String = getOrElse('Account, "")
-
-  /**
-   * user password
-   * @group Properties
-   */
-  def setPassword(password: String): Unit = set('Password, password)
-  /** @group Properties */
-  def getPassword(): String = getOrElse('Password, "")
-
-  //
-  // Api
-  //
 
   /**
    * Check if one of contacts has the same email as this user
@@ -99,7 +95,7 @@ class GoogleContacts() extends NamedBean with ValuesImmutableBean  {
    * @group Functions
    */
   def addContact(who: Who, whoGroups: Set[String]) {
-    val postURL = new URL(s"$GoogleApiUrl/contacts/${getAccount}/full")
+    val postURL = new URL(s"$GoogleApiUrl/contacts/${account}/full")
     val contact = new ContactEntry()
 
     contact.setTitle(new PlainTextConstruct(who.getName))
@@ -107,7 +103,7 @@ class GoogleContacts() extends NamedBean with ValuesImmutableBean  {
     name.setFullName(new FullName(who.getName, ""))
 
     contact.setName(name)
-    val primaryMail = new Email()
+    val primaryMail = new GoogleEmail()
     primaryMail.setAddress(who.getEmail)
     primaryMail.setRel("http://schemas.google.com/g/2005#home")
     primaryMail.setPrimary(true)
@@ -140,10 +136,7 @@ object GoogleContacts {
   val GoogleApiUrl = "https://www.google.com/m8/feeds"
 
   def apply(account: String, password: String): GoogleContacts = {
-    val contacts = new GoogleContacts()
-    contacts.setAccount(account)
-    contacts.setPassword(password)
-    contacts
+   new GoogleContacts(account, password)
   }
 
   private def getService(account: String, password: String) = {

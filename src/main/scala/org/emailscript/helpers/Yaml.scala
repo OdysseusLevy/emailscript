@@ -2,8 +2,7 @@ package org.emailscript.helpers
 
 import java.io._
 
-import org.emailscript.api.{GoogleContacts, LastScan, Who, EmailAccount}
-import org.slf4j.LoggerFactory
+import org.emailscript.api._
 import org.yaml.snakeyaml
 import org.yaml.snakeyaml.constructor.{Construct, Constructor}
 import org.yaml.snakeyaml.nodes.{Node, ScalarNode, Tag}
@@ -15,83 +14,92 @@ import scala.collection.JavaConverters._
 /**
  * Responsible for loading and storing yaml based data
  */
-class Yaml(val dataDir: File, var dataFiles: Map[String,File]) {
+class Yaml(streamHandler: StreamHandler) extends DataHandler {
+
+  import Yaml.logger
+
+  val yaml = Yaml.createYaml()
+
+  def read(reader: Reader): Option[AnyRef] = {
+    try {
+      Some(yaml.load(reader))
+    } catch {
+      case e: Throwable => logger.error(s"Failed to read data", e)
+        throw e
+    } finally {
+      reader.close()
+    }
+  }
 
   def getOrElse[T](name: String, callback: () => T): T = {
-    val dataName = name + Yaml.ymlExtension
+    val reader = streamHandler.getReader(name)
 
-    if(!dataFiles.contains(dataName))
+    if(!reader.isDefined)
       return callback()
 
-    Yaml.readFromFile(dataFiles(dataName)).getOrElse(callback()).asInstanceOf[T]
+    read(reader.get).getOrElse(callback()).asInstanceOf[T]
   }
 
   def set(name: String, data: AnyRef) {
+    save(data,streamHandler.getWriter(name) )
+  }
 
-    val dataName = name + Yaml.ymlExtension
-    if(!dataFiles.contains(dataName)) {
-      val dataFile = new File(dataDir, dataName)
-      if(!dataFile.createNewFile())
-        throw new Exception(s"Can not create file $dataName in directory: ${dataDir.getName}")
+  def save(data: AnyRef, writer: Writer) = {
 
-      dataFiles = dataFiles + (dataName -> dataFile)
+    val yaml = Yaml.createYaml()
+
+    try {
+      yaml.dump(data, writer)
+    } catch {
+      case e: Throwable => logger.error(s"Failed to save yaml data", e);
+        throw e
+    } finally{
+      writer.close()
     }
-
-    Yaml.saveToFile(data, dataFiles(dataName))
   }
 }
 
-object filter extends FilenameFilter {
-  def accept(dir: File, name: String) = { name.endsWith(Yaml.ymlExtension)}
+case class YamlType(tag: Tag, clazz: Class[AnyRef], converter: Option[AnyRef=>AnyRef])
+object YamlType {
+  def apply(tagName: String, clazz: Class[_], converter: Option[AnyRef=>AnyRef] = None) = {
+    new YamlType(new Tag(tagName), clazz.asInstanceOf[Class[AnyRef]], converter)
+  }
 }
 
 object Yaml {
 
   val logger = LoggerFactory.getLogger(getClass)
 
-  val WhoTag = new Tag("!Who")
-  val EmailAccountTag = new Tag("!EmailAccount")
-  val GoogleContactsTag = new Tag("!GoogleContacts")
-  val LastScanTag = new Tag("!LastScan")
+  val WhoTag ="!Who"
+  val EmailAccountTag = "!EmailAccount"
+  val GoogleContactsTag = "!GoogleContacts"
+  val LastScanTag = "!LastScan"
+  val IndexerTag = "!Indexer"
 
-  val tagMap = Map(
-    WhoTag -> classOf[Who],
-    EmailAccountTag -> classOf[EmailAccount],
-    GoogleContactsTag -> classOf[GoogleContacts],
-    LastScanTag -> classOf[LastScan]
+  val customTagTypes = Array[YamlType](
+    YamlType(WhoTag, classOf[WhoBean]),
+    YamlType(EmailAccountTag, classOf[EmailAccountBean]),
+    YamlType(GoogleContactsTag, classOf[GoogleContactsBean]),
+    YamlType(LastScanTag, classOf[LastScan]),
+    YamlType(IndexerTag, classOf[IndexerBean])
   )
 
-  val yaml = createYaml()
-
   val ymlExtension = ".yml"
-  val defaultDataDirName = "data"
 
-  def apply(dirName: String = defaultDataDirName) = new Yaml(new File(dirName), getDataFiles(new File(defaultDataDirName)))
+  def apply(handler: StreamHandler) = new Yaml(handler)
 
-  def read(reader: Reader): Option[AnyRef] = {
-    Option(yaml.load(reader))
-  }
-
-  def readFromFile(file: File): Option[AnyRef] = {
-    val reader = new FileReader(file)
-
-    try {
-      read(reader)
-    } catch {
-      case e: Throwable => logger.error(s"Failed to read data from file: ${file.getName}", e)
-                           throw e
-    } finally {
-      reader.close()
-    }
+  def apply(dirName: String) = {
+    val handler = new FileHandler(new File(dirName), ymlExtension)
+    new Yaml(handler)
   }
 
   private def createYaml(): org.yaml.snakeyaml.Yaml = {
     val constructor = new Constructor()
     val representer = new Representer()
 
-    tagMap.foreach { case(tag: Tag, c: Class[_]) =>
-      constructor.addTypeDescription( new TypeDescription(c, tag))
-      representer.addClassTag(c, tag)
+    customTagTypes.foreach { case yamlType: YamlType =>
+      constructor.addTypeDescription( new TypeDescription(yamlType.clazz, yamlType.tag))
+      representer.addClassTag(yamlType.clazz, yamlType.tag)
     }
 
     val options = new DumperOptions()
@@ -99,43 +107,20 @@ object Yaml {
     new snakeyaml.Yaml(constructor, representer, options)
   }
 
-  def save(data: AnyRef, writer: Writer) = {
-    val yaml = createYaml()
-    yaml.dump(data, writer)
-  }
-
-  def saveToFile(data: AnyRef, file: File) = {
-
-    val writer = new FileWriter(file)
-    try {
-      save(data, writer)
-    } catch {
-      case e: Throwable => logger.error(s"Failed to save yaml data to file ${file.getName}", e);
-                           throw e
-    } finally{
-      writer.close()
-    }
-  }
-
-  def getDataFiles(dataDir: File): Map[String, File] = {
-
-    if (!dataDir.exists()) {
-      if (!dataDir.mkdir())
-        throw new Exception(s"Could not create data directory ${dataDir.getPath}")
-    }
-
-    dataDir.listFiles(filter).map(file => file.getName -> file).toMap
-  }
+  /**
+   *  ** Experimental code **
+   *
+   *  exploring creating an object without using a javabean as intermediary
+   */
 
   def main(args: Array[String]) {
 
-    val constructor = new Constructor()
     constructor.addTypeDescription( new TypeDescription(classOf[TestWho], WhoTag) )
     val options = new DumperOptions()
-    //options.setDefaultFlowStyle(DumperOptions.FlowStyle.BLOCK);
     options.setAllowReadOnlyProperties(true)
 
     val representer = new Representer()
+    representer.addClassTag(classOf[TestWho], new Tag(WhoTag))
     val yaml = new snakeyaml.Yaml(constructor, representer, options)
 
     val who = new TestWho("personal", "test@test.com")
@@ -147,7 +132,7 @@ object Yaml {
   }
 
   val constructor = new Constructor {
-    this.yamlConstructors.put(WhoTag, new WhoConstruct)
+    this.yamlConstructors.put(new Tag(WhoTag), new WhoConstruct)
     class WhoConstruct() extends Construct {
       override def construct(node: Node): AnyRef = {
         val whoText = constructScalar(node.asInstanceOf[ScalarNode])
@@ -173,7 +158,7 @@ object Yaml {
       override def representData(data: scala.Any): Node = {
         val who = data.asInstanceOf[TestWho]
         val sequence = Seq(who.personal, who.email).asJava
-        representSequence(WhoTag, sequence, true)
+        representSequence(new Tag(WhoTag), sequence, true)
       }
     }
   }

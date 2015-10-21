@@ -1,7 +1,7 @@
-package org.emailscript.mail.dkim
+package org.emailscript.dkim
 
 import org.emailscript.helpers.DnsHelper
-import org.scalatest.{Matchers, FlatSpec}
+import org.scalatest.{FlatSpec, Matchers}
 
 class DnsHelperStub(result: Array[String]) extends DnsHelper {
   override def getDnsRecords(domain: String, dnsType: String) = result

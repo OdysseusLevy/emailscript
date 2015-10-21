@@ -1,6 +1,5 @@
-package org.cosmosgame.mailscript
+package org.emailscript.dnsbl
 
-import org.emailscript.dnsbl.{Subdomains, SurblDnsbl}
 import org.scalatest.FlatSpec
 
 class SurblDnsblTest extends FlatSpec {
