@@ -103,19 +103,19 @@ object MailUtils {
     openFolder(store, EmailAccount.getFolderName(account, folderName))
   }
 
-  def readLatest(account: EmailAccount, folderName: String, callback: ScriptCallback): Unit = {
+  def readLatest(account: EmailAccount, folderName: String, callback: ProcessCallback): Unit = {
     val folder = openFolder(account, folderName)
     val dataName = folderName + "LastRead"
     doCallback(account, dataName, folder.asInstanceOf[IMAPFolder], callback)
   }
 
-  def scanFolder(account: EmailAccount, folderName: String, callback: ScriptCallback, doFirstRead: Boolean = true): Unit = {
+  def scanFolder(account: EmailAccount, folderName: String, callback: ProcessCallback, doFirstRead: Boolean = true): Unit = {
     val mailFolder = openFolder(account, folderName)
     ImapFolderScanner.scanFolder(account, mailFolder.asInstanceOf[IMAPFolder], callback, doFirstRead)
   }
 
   def fetch(messages: Array[Message], folder: Folder) = {
-    logger.info(s"fetching ${messages.length} email(s) from ${folder.getName()}")
+    logger.info(s"fetching ${messages.length} email(s) from ${folder.getName}")
     folder.fetch(messages,defaultFetchProfile)
     logger.info(s"finishing fetch for ${folder.getName()}")
   }
@@ -229,7 +229,7 @@ object MailUtils {
   }
 
   def saveToFile(message: IMAPMessage, file : File) = {
-    message.writeTo(new FileOutputStream(file));
+    message.writeTo(new FileOutputStream(file))
   }
 
   def delete(permanent: Boolean, m: MailMessageHelper): Unit = {
@@ -277,7 +277,7 @@ object MailUtils {
     getStore(account).getFolder(folderName).exists()
   }
 
-  def doCallback(account: EmailAccount, dataName: String, folder: IMAPFolder, callback: ScriptCallback): Unit = {
+  def doCallback(account: EmailAccount, dataName: String, folder: IMAPFolder, callback: ProcessCallback): Unit = {
     val lastScan = yaml.getOrElse(dataName, () => new LastScan)
     logger.info(s" checking for emails in ${folder.getName}; last scan: $lastScan")
     lastScan.start = new Date()
@@ -287,11 +287,13 @@ object MailUtils {
       logger.info(s"No emails found in ${folder.getName}")
     }
     else {
-      logger.info(s"${emails.size} new email(s) found in ${folder.getName}")
+      logger.info(s"${emails.length} new email(s) found in ${folder.getName}")
 
-      try {
-        callback.callback(emails)
-      }
+      try
+        emails.foreach {
+          callback.callback(_)
+        }
+
       catch {
         case e: Throwable => throw new Exception("Error running callback", e)
       }
@@ -301,7 +303,7 @@ object MailUtils {
       MailUtils.expunge(folder)
 
       lastScan.stop = new Date()
-      lastScan.lastId = emails.last.getUid
+      lastScan.lastId = emails.last.getUid()
       yaml.set(dataName, lastScan)
     }
   }

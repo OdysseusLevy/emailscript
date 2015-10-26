@@ -72,6 +72,8 @@ class EmailAccountBean extends NamedBean with Importer{
 class EmailAccount(val user: String, val password: String, val imapHost: String, val imapPort: Int,
                    val smtpHost: String, val smtpPort: Int) {
 
+  import EmailAccount._
+
   /**
    * Create an email object that can be sent
    * @group Functions
@@ -80,7 +82,7 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
 
   /**
    * Send an email
-   * @param message
+   * @param message email to send
    * @group Functions
    */
   def send(message: EmailBean) = MailUtils.sendMessage(this, message)
@@ -94,75 +96,90 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
    * @param scanner callback
    * @group Functions
    */
-  def scanFolder(folderName: String, scanner: ScriptCallback): Unit = MailUtils.scanFolder(this, folderName, scanner)
+  def scanFolder(folderName: String, scanner: ProcessCallback): Unit = MailUtils.scanFolder(this, folderName, scanner)
 
   /**
    * Scan folder (same as above), but with option to not do the first, initial read
    *
-   * @param folderName
-   * @param doFirstRead
-   * @param scanner
+   * @param folderName folder to scan
+   * @param doFirstRead if true will first read unread messages
+   * @param scanner user supplied callback to handle the emails
    */
-  def scanFolder(folderName: String, doFirstRead: Boolean,  scanner: ScriptCallback): Unit =
+  def scanFolder(folderName: String, doFirstRead: Boolean,  scanner: ProcessCallback): Unit =
     MailUtils.scanFolder(this, folderName, scanner, doFirstRead)
 
   /**
    * Read in all new messages. The first time this is run it will read in all messages. Subsequent calls will only return
    * messages that have been added after the first time messages were read.
    * @param folderName folder to read from
-   * @param callback
+   * @param callback user supplied callback to handle the emails
    * @group Functions
    */
-  def readLatest(folderName: String, callback: ScriptCallback): Unit = MailUtils.readLatest(this, folderName, callback)
+  def readLatest(folderName: String, callback: ProcessCallback): Unit = MailUtils.readLatest(this, folderName, callback)
 
-  def process(emails: Array[Email], script: ProcessCallback): Unit = {
+  def foreach(emails: Array[Email], script: ProcessCallback): Unit = {
     emails.foreach(script.callback(_))
   }
 
   /**
    * Runs a script against all inbox emails
+   * @group Functions
    */
-  def process(script: ProcessCallback): Unit = process(getEmails(), script)
+  def foreach(script: ProcessCallback): Unit = foreach(getEmails(), script)
 
   /**
    * Runs a script against a list of emails with the given uid
-   * @param ids
-   * @param script
+   *
+   * @param ids array of specific uid's of the desired emails
+   * @param script user callback
+   * @group Functions
    */
-  def process(ids: java.util.ArrayList[Number], script:ProcessCallback): Unit = process(getEmails(ids), script)
+  def foreach(ids: java.util.ArrayList[Number], script:ProcessCallback): Unit = foreach(getEmails(ids), script)
 
   /**
-   * Runs a script against a given folder
-   * @param folderName
+   * Runs a script against all of a given folder
+   *
+   * @param folderName folder to read in
+   *  @group Functions
    */
-  def process(folderName: String, script: ProcessCallback): Unit = process(getEmails(folderName), script)
+  def foreach(folderName: String, script: ProcessCallback): Unit = foreach(getEmails(folderName), script)
 
   /**
    * Runs a script against a given folder and limit of how many
-   * @param folderName
-   * @param limit
+   * @param folderName folder to read (eg. Inbox, Junk, etc.)
+   * @param limit returns newest emails up to this limit
    * @param script
+   *  @group Functions
    */
-  def process(folderName: String, limit: Int, script: ProcessCallback): Unit = process(getEmails(folderName, limit), script)
+  def foreach(folderName: String, limit: Int, script: ProcessCallback): Unit = foreach(getEmails(folderName, limit), script)
+
+  /**
+   * Runs a script against the Inbox with a given limit of how many email to read
+   *
+   * @param limit returns newest emails up to this limit
+   * @param script
+   *  @group Functions
+   */
+  def foreach(limit: Int, script: ProcessCallback): Unit = foreach(getEmails(Inbox, limit), script)
 
   /**
    * Read all messages from Inbox
    * @group Functions
    */
-  def getEmails(): Array[Email] = getEmails("Inbox", 0)
+  def getEmails(): Array[Email] = getEmails(Inbox, 0)
 
   /**
    * Get emails from Inbox
    * @param limit use this to limit how many messages. Eg. a limit of 10 will return the latest 10 messages. 0 returns all messages
    * @group Functions
    */
-  def getEmails(limit: Int): Array[Email] = getEmails("Inbox", limit)
+  def getEmails(limit: Int): Array[Email] = getEmails(Inbox, limit)
 
   /**
    * Get specific emails by id
    * @param ids uid's for the desired mails
    */
-  def getEmails(ids: java.util.ArrayList[Number]): Array[Email] = getEmails("Inbox", ids)
+  def getEmails(ids: java.util.ArrayList[Number]): Array[Email] = getEmails(Inbox, ids)
 
 
   /**
@@ -236,6 +253,8 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
 }
 
 object EmailAccount {
+
+  val Inbox = "Inbox"
 
   private val Trash = "Trash"
   private val GmailTrash = "[Gmail]/Trash"

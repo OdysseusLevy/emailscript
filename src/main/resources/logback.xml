@@ -42,6 +42,8 @@
    </appender>
    -->
 
+    <logger name="uk.co.bigbeeconsultants.http" level="WARN"/>
+
     <root level="INFO">
         <appender-ref ref="SIFT" />
         <appender-ref ref="STDOUT" />

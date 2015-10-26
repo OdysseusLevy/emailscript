@@ -1,4 +1,3 @@
-def emails = MyEmail.getEmails()
-for(email in emails){
+MyEmail.foreach(){email->
   println("from: ${email.from} subject: ${email.subject}")
 }

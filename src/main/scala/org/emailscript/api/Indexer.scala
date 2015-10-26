@@ -125,12 +125,16 @@ class Indexer(val url: String) extends Exporter {
     val body = gson.toJson(Array(data))
     val requestBody = RequestBody(body, MediaType.APPLICATION_JSON)
 
-    val response = httpClient.post(new URL(url), Some(requestBody))
+    try {
+      val response = httpClient.post(new URL(url), Some(requestBody))
 
-    logger.info(s"indexing to url: $url body: $body ")
+      logger.debug(s"indexing to url: $url body: $body ")
 
-    if (!response.status.isSuccess)
-      logger.info(s"status: ${response.status.message} response = ${response.body.asString}")
+      if (!response.status.isSuccess)
+        logger.warn(s"status: ${response.status.message} response = ${response.body.asString}")
+    } catch {
+      case e: Throwable => logger.warn(s"Could not post to $url", e)
+    }
   }
 
 }

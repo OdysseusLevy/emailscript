@@ -6,6 +6,7 @@ Hack your inbox! Write simple scripts to do powerful things.
 
 * Continuously scan folders, to instantly handle emails as they come in
 * Tag senders to build whitelists, blacklists, etc.
+* Full DKIM support to validate emails as legitimate
 * Integrates with GoogleContacts
 * Move, delete emails
 * Send emails using mustache templates
@@ -15,31 +16,28 @@ Hack your inbox! Write simple scripts to do powerful things.
 
 This is all you need to do to set up a blacklist.
 
-Any email that is dragged into it the "Junk" folder will
-cause the sender to be blacklisted. All subsequent blacklisted emails will be moved immediately out of the Inbox.
+Any email that is dragged into the "Junk" folder causes the sender to be blacklisted. All subsequent blacklisted
+emails will be moved immediately out of the Inbox. If
+you change your mind and drag an email back into the Inbox, that will remove the sender from the blacklist
 
     // Continuously scan the "Junk" folder for new mails
 
-    MyEmail.scanFolder("Junk"){emails ->    // This closure is called when new emails appear
-
-      for(email in emails){
-        if (!email.from.hasTag("blacklisted")){
+    MyEmail.scanFolder("Junk"){email ->    // This closure is called when new emails appear
           logger.info("Blacklisting; from: ${email.from}")
           email.from.addTag("blacklisted")
-        }
-      }
     }
 
     // Continuously scan the "Inbox" folder for new mails
 
-    MyEmail.scanFolder("Inbox"){emails ->  // This closure is called when new emails appear
+    MyEmail.scanFolder("Inbox"){email ->  // This closure is called when new emails appear
 
-      for(email in emails){
+        if (email.moveHeader) // email was manually moved back to Inbox
+            email.from.removeTag("blacklisted")
+
         if (email.from.hasTag("blacklisted")){
           logger.info("$email.from is blacklisted")
           email.moveTo("Junk")
         }
-      }
     }
 
 To run this script you just need the emailscript jar
@@ -64,6 +62,7 @@ Send your comments/scripts to odysseus-at-cosmosgame.org. Put "Emailscript" some
 
 ##Versions
 
+* 0.3.0 11/22/2015 DKIM, api improvements, export to external DB via JSON (eg. Solr)
 * 0.2.1 1/26/2015 Bug fixes, more samples
 * 0.2.0 1/19/2015 Samples, Documentation
 * 0.1.0 Initial Release

@@ -1,6 +1,6 @@
 package org.emailscript.mail
 
-import java.io.{File, ByteArrayOutputStream}
+import java.io.{ByteArrayOutputStream, File}
 import java.net.URL
 import java.time.{Duration, Instant}
 import javax.mail.Message.RecipientType

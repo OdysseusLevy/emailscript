@@ -1,12 +1,12 @@
 package org.emailscript.mail
 
 import java.time.Duration
-import javax.mail.{FolderClosedException, MessagingException}
+import javax.mail.FolderClosedException
 
 import com.sun.mail.imap.IMAPFolder
 import com.sun.mail.imap.IMAPFolder.ProtocolCommand
 import com.sun.mail.imap.protocol.IMAPProtocol
-import org.emailscript.api.{EmailAccount, ScriptCallback}
+import org.emailscript.api.{EmailAccount, ProcessCallback}
 import org.emailscript.helpers.LoggerFactory
 
 
@@ -18,7 +18,7 @@ import org.emailscript.helpers.LoggerFactory
  *
  * Code adapted from an answer found here: http://stackoverflow.com/questions/4155412/javamail-keeping-imapfolder-idle-alive
  */
-class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: Boolean, callback: ScriptCallback) extends Runnable {
+class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: Boolean, callback: ProcessCallback) extends Runnable {
 
   import ImapFolderScanner._
 
@@ -123,7 +123,7 @@ object ImapFolderScanner {
 
   def isDone = threads.size == 0
 
-  def scanFolder(account: EmailAccount, folder: IMAPFolder, callback: ScriptCallback, doFirstRead: Boolean): Unit = {
+  def scanFolder(account: EmailAccount, folder: IMAPFolder, callback: ProcessCallback, doFirstRead: Boolean): Unit = {
 
     val scanner = new ImapFolderScanner(account, folder, doFirstRead, callback)
     val listenerThread = new Thread(scanner, folder.getName + "-Scanner" )

@@ -1,7 +1,6 @@
 logger.error("test")
-def emails = MyEmail.getEmails()
+MyEmail.foreach([197881, 202438]){ email ->
 //[197881, 202438]
-for(email in emails){
     logger.info("uid: ${email.uid} from: ${email.from} subject: ${email.subject}")
   Emails.indexEmail(email)
      Notes.indexNote(email, "verified host: ${email.verifiedHost}")

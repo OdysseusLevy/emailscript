@@ -1,12 +1,13 @@
 nickname: MailRules
 
-Hardcore: true 
 BulkFolder: Bulk
 SpamFolder: Junk
 
-CategoryRules:
+Rules:
     - subjectContains: Emailscript
       category: Emailscript
+    - host: hai.com
+      category: HAI
     - host: facebookmail.com
       category: Social
     - subjectContains: Jaiya
@@ -20,6 +21,9 @@ Categories:
         whitelist: true
         saveUnread: true
         inboxDays: 7
+    HAI
+        inboxMax: 5
+        whitelist: true
     Notifications:
         inboxMax: 2
         whitelist: true
@@ -30,6 +34,7 @@ Categories:
         folderDays: 60
     Junk:
         folderDays: 45
+        blacklist: true
     Social:
         inboxMax: 2
         whitelist: true
