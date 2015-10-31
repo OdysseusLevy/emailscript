@@ -1,8 +1,31 @@
 Helper.requires(["MyEmail","MailRules"])
 
 //
-// Keeps inbox clear of junk
+// Keeps inboxes clear of junk
 // Uses the MailRules to configure share info such as folder names across scripts
+//
+
+
+//
+// For Gmail account just do a simple blacklist
+//
+
+// Continuously scan the "Inbox" folder for new mails
+
+Gmail.scanFolder("Inbox"){email -> // This closure is called whenever we get new mail (or run for first time)
+
+    if (email.moveHeader) {
+        logger.info("Mail manually moved back to Inbox; from: ${email.from} subject: ${email.subject}")
+        email.from.removeTag("blacklisted")
+    }
+    if (email.from.hasTag("blacklisted")){
+        logger.info("$email.from is blacklisted")
+        email.moveTo("Junk")
+    }
+}
+
+//
+// Main email account is more complex
 //
 
 //
@@ -12,8 +35,8 @@ Helper.requires(["MyEmail","MailRules"])
 MyEmail.scanFolder(MailRules.SpamFolder){ email ->
 
     if (email.moveHeader != MailRules.SpamFolder) {// manually moved to this folder
-        blacklist(email)
-        logReason(email, "Manually moved to Junk folder")
+        logReason(email, "Manually moved to Spam folder")
+        email.from.setValue("folder", MailRules.SpamFolder)
     }
 }
 
@@ -28,7 +51,7 @@ MyEmail.scanFolder("Sent"){ email ->
 
     for (who in sentTo){
         who.addTag("Sent")
-        who.addTag("whitelist")
+        who.setValue("folder","Inbox")
     }
 }
 
@@ -51,10 +74,37 @@ def whitelist(email) {
     if (!email.from.hasTag("whitelist")) {
         logger.info("Adding ${email.from} to whitelist")
         email.from.addTag("whitelist")
+        email.from.removeTag("blacklist")
+    }
+}
+
+def checkCategory(email) {
+
+    def category = getCategory(email)
+    if (category && MailRules.Categories[category]){
+        if (MailRules.Categories[category].whitelist && !email.from.getValue("folder") != "Inbox"){
+            logReason(email, "whitelisting sender because it is in category $category")
+            email.from.addTag("whitelist")
+        }
+    }
+}
+
+def getCategory(email) {
+    for(rule in MailRules.Rules){
+        if (rule.subjectContains && email.subject.contains(rule.subjectContains) )
+            return rule.category
+        else if (rule.host && email.from.host == rule.host)
+            return rule.category
     }
 
+    email.from.getValue("Category")
 }
+
 MyEmail.scanFolder("Inbox"){email ->
+
+    // First check our rules to see if we should whitelist the sender
+
+    checkCategory(email)
 
     // 1: Check for mails manually moved back into Inbox
 
@@ -76,15 +126,7 @@ MyEmail.scanFolder("Inbox"){email ->
         email.moveTo(MailRules.SpamFolder)
     }
         
-    // 4: Check if we want to whitelist this email
-    else if (email.subject.contains("Emailscript") ||
-            email.subject.contains("Jaiya") ||
-            email.subject.contains("Uly")){
-        logReason(email, "Subject contains pass phrase, whitelisting sender")
-        whitelist(email)
-    }
-
-    // 5: None of the above. Figure out where to move it
+    // 4: None of the above. Figure out where to move it
 
     else {
         if (email.isVerifiedHost) {

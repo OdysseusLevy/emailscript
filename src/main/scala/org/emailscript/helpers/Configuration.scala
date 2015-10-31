@@ -41,7 +41,7 @@ object Configuration {
 
     obj match {
       case named: Named if (!Strings.isNullOrEmpty(named.getNickname)) => named.getNickname
-      case map: java.util.Map[String, AnyVal] if (map.containsKey(Named.Nickname)) => map.get(Named.Nickname).toString
+      case map: java.util.Map[_,_] if (map.containsKey(Named.Nickname)) => map.get(Named.Nickname).toString
       case _ =>default
     }
   }

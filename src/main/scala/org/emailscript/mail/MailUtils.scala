@@ -114,7 +114,8 @@ object MailUtils {
     ImapFolderScanner.scanFolder(account, mailFolder.asInstanceOf[IMAPFolder], callback, doFirstRead)
   }
 
-  def fetch(messages: Array[Message], folder: Folder) = {
+  def fetch(messages: Array[Message], folder: Folder): Unit = {
+
     logger.info(s"fetching ${messages.length} email(s) from ${folder.getName}")
     folder.fetch(messages,defaultFetchProfile)
     logger.info(s"finishing fetch for ${folder.getName()}")
@@ -153,9 +154,17 @@ object MailUtils {
     getEmails(account, messages, mailFolder)
   }
 
+  def getEmailSafe(folder: IMAPFolder, id: Long): Option[Message] = {
+    val email = folder.getMessageByUID(id)
+    if (email == null)
+      None
+    else
+      Some(email)
+  }
+
   def getEmails(account: EmailAccount, folderName: String, ids: util.ArrayList[Number]): Array[Email] = {
     val folder = openFolder(account, folderName).asInstanceOf[IMAPFolder] //TODO time to fess up and change all Folders to IMAPFolder
-    val messages = ids.asScala.toArray.map{id => folder.getMessageByUID(id.longValue())}
+    val messages = ids.asScala.toArray.flatMap{id => getEmailSafe(folder, id.longValue())}
     getEmails(account, messages, folder)
   }
 

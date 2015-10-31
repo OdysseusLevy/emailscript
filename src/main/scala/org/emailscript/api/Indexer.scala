@@ -18,6 +18,7 @@ class NoteBean {
   @BeanProperty var from_s: String = ""
   @BeanProperty var subject_s: String = ""
   @BeanProperty var note_t: String = ""
+  @BeanProperty var date_dt: String = ""
 }
 
 object NoteBean {
@@ -28,7 +29,7 @@ object NoteBean {
     bean.from_s = email.getFrom().toString
     bean.subject_s = email.getSubject()
     bean.note_t = note
-
+    bean.date_dt = Indexer.formatDate(email.getReceived())
     bean
   }
 }

@@ -124,7 +124,6 @@ class Who(val name: String, val email: String, tags: Tags, values: Values ) exte
   /** @group Plumbing */
   override def equals(o: Any): Boolean = {
     o match {
-      case s: String => email.equals(s.toLowerCase())
       case who: Who => who.email.equals(email)
       case _ => false
     }
@@ -148,13 +147,12 @@ object Who {
       ""
     else
       email.substring(index + 1)
-
   }
 
   def apply(name: String, email: String) = {
     val tags = Tags.getTags("who_tags")
     val values = Values.getValues[WhoBean]("who_values")
-    new Who(name, email, tags, values)
+    new Who(name, email.toLowerCase(), tags, values)
   }
 
   def apply(address: Address): Who = {

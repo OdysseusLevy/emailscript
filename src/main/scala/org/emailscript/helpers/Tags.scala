@@ -93,7 +93,7 @@ object Tags {
   def getTags(name: String, yaml: Yaml = Yaml(Configuration.DataDir)): Tags = {
 
     if (tagCollections.contains(name))
-      tagCollections(name).asInstanceOf[Tags]
+      tagCollections(name)
     else {
       val tags = new Tags(name, yaml)
       tagCollections += (name -> tags)

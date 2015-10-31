@@ -137,12 +137,23 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
   def foreach(ids: java.util.ArrayList[Number], script:ProcessCallback): Unit = foreach(getEmails(ids), script)
 
   /**
-   * Runs a script against all of a given folder
+   * Runs a script against every email in a given folder
    *
    * @param folderName folder to read in
    *  @group Functions
    */
   def foreach(folderName: String, script: ProcessCallback): Unit = foreach(getEmails(folderName), script)
+
+  /**
+   * Run a script against emails from a given list of ids and folder
+   *
+   * @param folderName folder to read from
+   * @param ids email uids
+   * @param script script to run against each
+   * @group Functions
+   */
+  def foreach(folderName: String, ids: java.util.ArrayList[Number], script: ProcessCallback): Unit =
+    foreach(getEmails(folderName, ids), script)
 
   /**
    * Runs a script against a given folder and limit of how many

@@ -1,7 +1,7 @@
 package org.emailscript.helpers
 
 import ch.qos.logback.classic.{Level, LoggerContext}
-import ch.qos.logback.classic.spi.ILoggingEvent
+import ch.qos.logback.classic.spi.{StackTraceElementProxy, ILoggingEvent}
 import ch.qos.logback.core.AppenderBase
 import ch.qos.logback.core.util.StatusPrinter
 import com.google.gdata.util.common.base.StringUtil
@@ -52,9 +52,25 @@ class IndexAppender extends AppenderBase[ILoggingEvent] {
     if (!e.getLevel.isGreaterOrEqual(level))
       return
 
+    var message =  e.getFormattedMessage
+    if (e.getThrowableProxy != null) {
+      message +=  " "  + e.getThrowableProxy.getMessage + "\n" + getStackTrace(e.getThrowableProxy.getStackTraceElementProxyArray)
+    }
+
     val bean = LogBean(e.getTimeStamp, e.getFormattedMessage, e.getLevel.toString, e.getThreadName)
     indexer.index(bean)
   }
+
+def getStackTrace(elements: Array[StackTraceElementProxy]): String = {
+  if (elements == null)
+    return ""
+
+  var result = "Stack trace: "
+  elements.foreach(element => result += s"\n${element.toString}")
+
+  result
+}
+
 }
 
 object Logger {

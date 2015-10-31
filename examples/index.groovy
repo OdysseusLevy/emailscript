@@ -1,4 +1,4 @@
-logger.error("test")
+logger.error("test", new Exception("boom!"))
 MyEmail.foreach([197881, 202438]){ email ->
 //[197881, 202438]
     logger.info("uid: ${email.uid} from: ${email.from} subject: ${email.subject}")
