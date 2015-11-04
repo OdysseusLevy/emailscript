@@ -29,7 +29,7 @@ class EmailBean {
     message.setRecipient(Message.RecipientType.TO, to.toAddress)
     message.setFrom(from.toAddress)
     message.setSubject(subject)
-    message.setText(body, "utf-8", "body") //Review -- for now we assume body
+    message.setText(body, "utf-8", "html") //Review -- for now we assume html
     message
   }
 }

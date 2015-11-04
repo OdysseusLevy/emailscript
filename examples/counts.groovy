@@ -50,7 +50,7 @@ def html = Helper.execute("table.ms", [folder: folder, size: emails.size(), coun
 
 def mail = MyEmail.newMail()
 mail.setSubject("Counts")
-mail.setHtml(html)
+mail.setBody(html)
 //mail.setTo("myemail@myhost.com")  // Set this if you want to send to a different email address
 
 MyEmail.send(mail)

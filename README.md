@@ -1,6 +1,6 @@
 #Emailscript
 
-Hack your inbox! Write simple scripts to do powerful things.
+Hack your inbox! Write simple scripts to tame your mail.
 
 ##Features
 

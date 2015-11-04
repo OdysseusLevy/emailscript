@@ -85,6 +85,8 @@ class YamlTest extends FlatSpec with Matchers {
         'nickname ("Indexer"),
         'url ("http://test.org/test")
         )
+
+      case other:Any => fail(s"unexpected result $other")
     }
   }
 
@@ -162,6 +164,7 @@ class YamlTest extends FlatSpec with Matchers {
         'account ("test@gmail.com"),
         'password ("password2")
         )
+      case other: Any => fail(s"unexpected result $other")
     }
   }
 }
