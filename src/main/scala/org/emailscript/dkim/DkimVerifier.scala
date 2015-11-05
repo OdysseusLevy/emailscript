@@ -13,10 +13,12 @@ import scala.collection.mutable
 
 case class Body(bytes: Array[Byte], length: Int)
 
+// Want this to mimic an Option that has extra information
 case class DkimResult(description: String,           // Error message, if any goes here
-                      dkim: DkimSignature = null) {  // Dkim Signature record goes here on success
+                      valid: Boolean,
+                      dkim: DkimSignature = DkimSignature.empty) {  // Dkim Signature record goes here on success
 
-  def isDefined() = {dkim != null}
+  def isDefined() = valid
   def get = dkim
 }
 
@@ -51,7 +53,7 @@ object DkimVerifier {
     if (verifyBody(email, headerResult.dkim))
       headerResult
     else
-      new DkimResult("Body hash did not match")
+      new DkimResult("Body hash did not match", false, headerResult.dkim)
   }
 
   /**
@@ -67,7 +69,7 @@ object DkimVerifier {
     val headerStacks = buildHeaderStacks(headers)
     val dkim = getDkim(headerStacks)
     if (dkim.isEmpty)
-      return new DkimResult("No valid dkim header found")
+      return new DkimResult("No valid dkim header found", false)
 
     val verifier = new DkimVerifier(dkim.get,headerStacks, dnsHelper)
     verifier.verifyHeaders()
@@ -258,21 +260,18 @@ class DkimVerifier(dkim: DkimSignature, headerStacks: HeaderStack, dnsHelper: Dn
 
   def verifyHeaders(): DkimResult = {
 
-    val dnsLookup = new DkimDnsLookup(dnsHelper)
-
-    val publicKeyOption = dnsLookup.getPublicKey(dkim.dnsRecord)
-    if (publicKeyOption.isEmpty)
-      return new DkimResult("Could not find public key")
-
-    val publicKey = publicKeyOption.get
-    val dkimHeaderText = getSignatureText()
-
-    logger.debug(s"headerText:\n$dkimHeaderText")
-
-    val bs: BASE64Decoder = new BASE64Decoder
-    val sigBuf: Array[Byte] = bs.decodeBuffer(dkim.signature)
-
     try {
+      val dnsLookup = new DkimDnsLookup(dnsHelper)
+
+      val publicKey = dnsLookup.getPublicKey(dkim.dnsRecord)
+      val dkimHeaderText = getSignatureText()
+
+      logger.debug(s"headerText:\n$dkimHeaderText")
+
+      val bs: BASE64Decoder = new BASE64Decoder
+      val sigBuf: Array[Byte] = bs.decodeBuffer(dkim.signature)
+
+
       val sig = Signature.getInstance(dkim.getSignatureAlgorithm)
       sig.initVerify(publicKey)
       sig.update(dkimHeaderText.getBytes())
@@ -280,13 +279,13 @@ class DkimVerifier(dkim: DkimSignature, headerStacks: HeaderStack, dnsHelper: Dn
       val result = sig.verify(sigBuf)
       logger.debug(s"RESULT: $result domain: ${dkim.domain}")
       if (result)
-        new DkimResult("Success", dkim)
+        new DkimResult("Success", true, dkim)
       else{
         logger.debug(s"signature: ${dkim.rawSignature}")
-        new DkimResult("Headers signature did not validate")
+        new DkimResult("Headers signature did not validate", false, dkim)
       }
     } catch {
-      case t: Throwable => logger.debug("verifyHost error", t); new DkimResult(t.getMessage)
+      case t: Throwable => logger.debug("verifyHost error", t); new DkimResult(t.getMessage, false, dkim)
     }
   }
 

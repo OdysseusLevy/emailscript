@@ -6,6 +6,8 @@ import java.util.Base64
 
 import org.emailscript.helpers.{DnsHelper, LoggerFactory}
 
+import scala.collection.concurrent.RDCSS_Descriptor
+
 object DkimDnsLookup {
   val logger = LoggerFactory.getLogger(getClass)
 
@@ -14,53 +16,47 @@ object DkimDnsLookup {
 
   def removeWhiteSpace(text: String) = text.replaceAll("""[  \t\n\r"]""", "")
 
-  // Remove beginning and end quotes, if any
-  // Technically, should not be legal, but it seems common in DNS records
-  def deQuote(text: String): String = {
-
-    val start = if (text.startsWith("\"")) 1 else 0
-    val end = if (text.endsWith("\"")) text.length - 1 else text.length
-
-    text.substring(start, end)
-  }
 }
 
 class DkimDnsLookup(helper: DnsHelper) {
   import DkimDnsLookup._
 
   // Find (and create) the first valid key we find
-  def getPublicKey(dnsHost: String): Option[PublicKey] = {
-     helper.getDnsRecords(dnsHost, "TXT").flatMap{createKey}.headOption
-  }
+  def getPublicKey(dnsHost: String): PublicKey = {
+    val records = helper.getDnsRecords(dnsHost, "TXT")
+    if (records.length == 0)
+      throw new Exception(s"No TXT records found in DNS entry for : $dnsHost")
 
+    val maps = records.map{record: String => DkimSignature.mapFields(removeWhiteSpace(record))}
 
-  private def createKey(record: String): Option[PublicKey] = {
+    val mapOption = maps.find(isValid(_))
 
-    try {
-      logger.debug(s"dns record: $record")
-      val fields = DkimSignature.mapFields(deQuote(record))
-      validate(fields).flatMap(generatePublicKey)
-    } catch {
-      case error: Throwable =>
-        logger.debug(s"invalid dns entry: error: ${error.getMessage} $record")
-        None
+    if (mapOption.isEmpty){
+      val recordText = records.mkString(",")
+      throw new Exception(s"No valid TXT record found for $dnsHost, records: $recordText")
     }
+
+    val fieldMap = mapOption.get
+    generatePublicKey(fieldMap.get("p").get)
   }
 
-  private def validate(map: Map[String, String]): Option[String] = {
+
+  private def isValid(map: Map[String, String]): Boolean = {
     if (map.getOrElse("v", DKIM1) != DKIM1)
-      None
-    else map.get("p")
+      false
+    else if (!map.contains("p"))
+      false
+    else
+      true
   }
 
-  private def generatePublicKey(encodedPublicKey: String): Option[PublicKey] = {
+  private def generatePublicKey(encodedPublicKey: String): PublicKey = {
 
       logger.debug(s"encoded key: $encodedPublicKey")
 
-      val keyText = removeWhiteSpace(encodedPublicKey)
-      val decodedKey = Base64.getDecoder().decode(keyText)
+      val decodedKey = Base64.getDecoder().decode(encodedPublicKey)
       val keyFactory = KeyFactory.getInstance("RSA")
-      Some(keyFactory.generatePublic(new X509EncodedKeySpec(decodedKey)))
+      keyFactory.generatePublic(new X509EncodedKeySpec(decodedKey))
   }
 
 }

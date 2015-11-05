@@ -21,16 +21,29 @@ class DkimDnsLookupTest extends FlatSpec with Matchers {
     val dnsHelper = new DnsHelperStub(Array(invalid))
     val dnsLookup = new DkimDnsLookup(dnsHelper)
 
-    dnsLookup.getPublicKey("-test-").isEmpty should be(true)
+    var exceptionThrown = false
+    try {
+      dnsLookup.getPublicKey("-test-")
+    } catch {
+      case e: Throwable => exceptionThrown = true
+    }
+
+    exceptionThrown should be(true)
   }
 
   "getPublicKey" should "skip invalid records and find correct ones" in {
     val dnsHelper = new DnsHelperStub(Array(invalid, valid))
     val dnsLookup = new DkimDnsLookup(dnsHelper)
 
-    val result = dnsLookup.getPublicKey("-test-")
+    var exceptionThrown = false
+    try {
+      val result = dnsLookup.getPublicKey("-test-")
+    } catch {
+      case e: Throwable => exceptionThrown = true
+    }
 
-    result.isDefined should be(true)
+    exceptionThrown should be (false)
+
   }
 
 

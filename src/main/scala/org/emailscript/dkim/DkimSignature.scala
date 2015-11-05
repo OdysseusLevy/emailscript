@@ -4,6 +4,30 @@ import org.emailscript.helpers.LoggerFactory
 
 object DkimSignature {
 
+  val empty = apply()
+
+  def apply(rawSignature: String = "",
+             hashAlgorithm: String = "",
+             signature: String = "",
+             bodyHash: String = "",
+             domain: String = "",
+             headers: String = "",
+             dnsSelector: String = "",
+             time: Long = 0,
+             expiration: Long = 0,
+             headerCanonicalization: String = "",
+             bodyCanonicalization: String = "",
+             identity: String = "",
+             copiedHeaders: String = "",
+             bodyLength: Int = 0) = {
+
+    new DkimSignature(
+      rawSignature = rawSignature, hashAlgorithm = hashAlgorithm, signature = signature, bodyHash = bodyHash,
+      domain = domain, headers = headers,
+      dnsSelector = dnsSelector, time = time, expiration = expiration,
+      headerCanonicalization = headerCanonicalization, bodyCanonicalization = bodyCanonicalization,
+      identity = identity, copiedHeaders = copiedHeaders, bodyLength = bodyLength)
+  }
   val DkimHeader = "Dkim-Signature"
 
   val logger = LoggerFactory.getLogger(getClass)
@@ -60,9 +84,13 @@ object DkimSignature {
   def create(signature: String): DkimResult = {
 
     try{
-      new DkimResult("", rawCreate(signature))
+      val dkim = rawCreate(signature)
+      new DkimResult("", true, dkim)
     } catch {
-      case t: Throwable => logger.debug(s"invalid signature: ${t.getMessage}"); new DkimResult(t.getMessage)
+      case t: Throwable => {
+        logger.debug(s"invalid signature: ${t.getMessage}")
+        new DkimResult(t.getMessage, false, DkimSignature(rawSignature = signature))
+      };
     }
   }
 

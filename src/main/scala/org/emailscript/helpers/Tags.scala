@@ -69,6 +69,9 @@ class Tags(dataName: String, dataHandler: DataHandler) {
   def toConcurrent(inMap: JavaMap): TagMap = {
     val map = new TagMap()
 
+    if (inMap == null)
+      return map
+
     inMap.asScala.foreach{ case (key:AnyRef, tags: JavaSet) =>
       val set = Set[String](tags.asScala.toSeq:_*)
       map.put(Serializer.convertForImport(key), set)

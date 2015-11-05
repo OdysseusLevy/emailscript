@@ -117,13 +117,19 @@ class Email(helper: MailMessageHelper) {
    * Do a full DKIM verification of both the headers and the body
    * @return DkimResult
    */
-  def getDkimSignature: DkimResult = helper.dkimResult
+  def getDkim: DkimInfo = DkimInfo(helper.dkimResult)
 
   /**
-   * Do a DKIM verification on only the headers.
-   *
-   * This will be significantly faster than do a full verify, so sometimes it is preferred
-   */
+    * Do a DKIM verification on only the headers.
+    *
+    * This will be significantly faster than do a full verify, so sometimes it is preferred
+    */
+  def getDkimHeader = DkimInfo(helper.dkimHeader)
+
+  /**
+    * Same as getDkimHeader() except that we just want to know what the verified host is
+    * @return if valid DKIM signature, the dkim host is returned else returns empty string
+    */
   def getVerifiedHost(): String = helper.verifiedHost
 
   /**
