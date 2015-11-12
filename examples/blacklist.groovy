@@ -4,7 +4,7 @@ Gmail.scanFolder("Junk"){email ->    // This closure is called whenever we get n
 
     if (!email.from.hasTag("blacklisted")){
         logger.info("Blacklisting; from: ${email.from}")
-        email.from.addTag("blacklisted", true)
+        email.from.addTag("blacklisted")
     }
 }
 

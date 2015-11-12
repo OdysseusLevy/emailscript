@@ -286,13 +286,15 @@ object EmailAccount {
     if (name == Trash)
       return GmailTrash
 
-    if (name == GmailTrash)
-      return name
 
-    if (name.startsWith("[") || gmailTopLevelFolders.contains(name.toLowerCase))
-      return name
-
-    "[Gmail]/" + name
+    name
+//    if (name == GmailTrash)
+//      return name
+//
+//    if (name.startsWith("[") || gmailTopLevelFolders.contains(name.toLowerCase))
+//      return name
+//
+//    "[Gmail]/" + name
   }
 
   def apply(bean: EmailAccountBean) = {

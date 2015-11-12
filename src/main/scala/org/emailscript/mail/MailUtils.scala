@@ -39,17 +39,13 @@ object MailUtils {
    */
   def ensureOpen(account: EmailAccount, folder: Folder) = {
 
-    val sleepTime = Duration.ofSeconds(10).toMillis // We need to give the server time to recover before we try again
-
     if (!folder.getStore.isConnected) {
-      logger.warn(s"reopening store connected to: ${folder.getName}")
-      Thread.sleep(sleepTime)
+      logger.info(s"reopening store connected to: ${folder.getName}")
       folder.getStore.connect(account.imapHost, account.user, account.password)
     }
 
-    if (!folder.isOpen){ //Just in case we get timed out
-      logger.warn(s"reopening folder: ${folder.getName}")
-      Thread.sleep(sleepTime)
+    if (!folder.isOpen){
+      logger.info(s"reopening folder: ${folder.getName}")
       folder.open(MailUtils.defaultPermissions)
     }
   }
@@ -116,9 +112,9 @@ object MailUtils {
 
   def fetch(messages: Array[Message], folder: Folder): Unit = {
 
-    logger.info(s"fetching ${messages.length} email(s) from ${folder.getName}")
+    logger.debug(s"fetching ${messages.length} email(s) from ${folder.getName}")
     folder.fetch(messages,defaultFetchProfile)
-    logger.info(s"finishing fetch for ${folder.getName()}")
+    logger.debug(s"finishing fetch for ${folder.getName()}")
   }
 
   def getEmails(account: EmailAccount, messages: Array[Message], folder: Folder) = {
