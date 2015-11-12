@@ -1,31 +1,8 @@
 Helper.requires(["MyEmail","MailRules"])
 
 //
-// Keeps inboxes clear of junk
-// Uses the MailRules to configure share info such as folder names across scripts
-//
-
-
-//
-// For Gmail account just do a simple blacklist
-//
-
-// Continuously scan the "Inbox" folder for new mails
-
-Gmail.scanFolder("Inbox"){email -> // This closure is called whenever we get new mail (or run for first time)
-
-    if (email.moveHeader) {
-        logger.info("Mail manually moved back to Inbox; from: ${email.from} subject: ${email.subject}")
-        email.from.removeTag("blacklisted")
-    }
-    if (email.from.hasTag("blacklisted")){
-        logger.info("$email.from is blacklisted")
-        email.moveTo("Junk")
-    }
-}
-
-//
-// Main email account is more complex
+// Keeps my inbox clear of junk
+// Uses MailRules.yaml to share info with daily.groovy
 //
 
 //
@@ -58,6 +35,9 @@ MyEmail.scanFolder("Sent"){ email ->
 //
 // Inbox
 //
+
+// This logs to an external JSON database (Solr). I can then easily see what decisions were made for a given
+// email
 
 def logReason(email, explanation) {
     Notes.indexNote(email, explanation)
