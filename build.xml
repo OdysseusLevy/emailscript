@@ -10,7 +10,7 @@
     <property name="jvm-target" value="jvm-1.7"/>
 
     <!-- Properties -->
-    <property name="version" value="0.2.1"/>
+    <property name="version" value="0.3.2"/>
     <property name="distribution" value="emailscript-${version}"/>
     <property name="src.dir" location="${basedir}/src/main"/>
     <property name="src.scala.dir" location="${src.dir}/scala/org/emailscript"/>
