@@ -27,7 +27,7 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
 
   import ImapFolderScanner._
 
-  val dataName = folder.getName + "LastScan"
+  val dataName = "LastScan"
 
   // Thread to periodically sent NOOP messages to the server. The mail server will then send a message to us which will break
   // us out of our IDLE
@@ -87,12 +87,12 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
 
         folder.idle(true)
         logger.debug("returning from idle")
-        MailUtils.doCallback(account, dataName,folder, callback)
+        MailUtils.doCallback(account, dataName, folder, callback)
 
-        // Folders keep a cache of all opened messages. This is a memory leak. Only close will flush this.
+        // Folders keep a cache of all opened messages. This is a memory leak. Only folder.close() will flush this.
 
-        // REVIEW: closing/reopening is a bit expensive network wise, consider closing less often or opening using the
-        // ResyncData info (to minimize network traffic)
+        // REVIEW: closing/reopening might be expensive network wise, consider closing less often or opening using the
+        // ResyncData info (to minimize network roundtrips)
 
         logger.debug(s"closing folder ${folder.getName}")
         folder.close(true)

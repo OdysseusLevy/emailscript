@@ -69,7 +69,7 @@ class EmailAccountBean extends NamedBean with Importer{
  * }}}
  *
  */
-class EmailAccount(val user: String, val password: String, val imapHost: String, val imapPort: Int,
+class EmailAccount(val name: String, val user: String, val password: String, val imapHost: String, val imapPort: Int,
                    val smtpHost: String, val smtpPort: Int) {
 
   import EmailAccount._
@@ -211,7 +211,7 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
 
   /**
    * Get all emails from a specified folder
-   * @param folderName
+   * @param folderName folder we are reading
    * @group Functions
    */
   def getEmails(folderName: String): Array[Email] = getEmails(folderName, 0)
@@ -219,8 +219,8 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
   /**
    * Get emails from a specified folder with a specified limit
    *
-   * @param folderName
-   * @param limit
+   * @param folderName folder we are reading from
+   * @param limit maximum number of emails to return
    * @group Functions
    */
   def getEmails(folderName: String, limit: Int): Array[Email] = MailUtils.getEmails(this, folderName, limit)
@@ -228,9 +228,10 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
   def getEmails(folderName: String, ids: java.util.ArrayList[Number]) = MailUtils.getEmails(this, folderName, ids)
 
   /**
-   *
-   * @param folderName
-   * @param startUID
+   * Get all emails after a given UID
+    *
+   * @param folderName folder we are looking in
+   * @param startUID starting id
    * @group Functions
    */
   def getEmailsAfter(folderName: String, startUID: java.lang.Long): Array[Email] = {
@@ -242,7 +243,7 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
    *
    * @group Functions
    */
-  def isGmail() = user.endsWith("gmail.com")
+  def isGmail() = user.toLowerCase.endsWith("gmail.com")
 
   //
   // Folder support
@@ -259,7 +260,7 @@ class EmailAccount(val user: String, val password: String, val imapHost: String,
    * Return all of the folder names for this account
    * @group Functions
    */
-  def getFolders(): Array[String] = MailUtils.getFolderNames(this)
+  def getFolders(): Array[Folder] = MailUtils.getFolders(this)
 
 }
 
@@ -269,6 +270,9 @@ object EmailAccount {
 
   private val Trash = "Trash"
   private val GmailTrash = "[Gmail]/Trash"
+
+  private val Spam = "Spam"
+  private val GmailSpam = "[Gmail]/Spam"
 
   def trashFolder(account: EmailAccount): String = {
     if (account.isGmail())
@@ -283,22 +287,25 @@ object EmailAccount {
     if (!account.isGmail)
       return name
 
-    if (name == Trash)
-      return GmailTrash
+    // Handle Gmail specific folders
 
-
-    name
-//    if (name == GmailTrash)
-//      return name
-//
-//    if (name.startsWith("[") || gmailTopLevelFolders.contains(name.toLowerCase))
-//      return name
-//
-//    "[Gmail]/" + name
+    name.toLowerCase() match {
+      case "trash" => "[Gmail]/Trash"
+      case "spam" => "[Gmail]/Spam"
+      case "drafts" => "[Gmail]/Drafts"
+      case _ => name
+    }
   }
 
   def apply(bean: EmailAccountBean) = {
-    new EmailAccount(bean.getUser, bean.getPassword, bean.getImapHost, bean.getImapPort, bean.getSmtpHost, bean.getSmtpPort)
+    new EmailAccount(
+      bean.getNickname,
+      bean.getUser,
+      bean.getPassword,
+      bean.getImapHost,
+      bean.getImapPort,
+      bean.getSmtpHost,
+      bean.getSmtpPort)
   }
 
   def createBean(imapHost: String, user: String, password: String, smtpHost: String): EmailAccountBean = {

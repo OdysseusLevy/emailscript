@@ -1,11 +1,10 @@
 package org.emailscript.mail
 
 import java.io.{File, FileOutputStream}
-import java.time.Duration
 import java.util
 import java.util.{Date, Properties}
 import javax.mail.Flags.Flag
-import javax.mail._
+import javax.mail.{Folder => JavaMailFolder, _}
 import javax.mail.internet.{InternetAddress, MimeMessage}
 import javax.mail.search.{ComparisonTerm, ReceivedDateTerm}
 
@@ -19,6 +18,7 @@ import scala.collection.immutable.HashMap
 
 /**
  * Basic mail handling utilities using javax.mail
+  * TODO Explicitly switch to supporting just IMAP folders
  */
 object MailUtils {
 
@@ -27,17 +27,17 @@ object MailUtils {
   val logger = LoggerFactory.getLogger(getClass)
   val defaultFetchProfile = createDefaultFetchProfile()
 
-  var folders = new HashMap[String, Folder]()
+  var folders = new HashMap[String, JavaMailFolder]()
   var accounts = new HashMap[EmailAccount,Store]()
 
   var dryRun: Boolean = false
-  lazy val defaultPermissions = if (dryRun) Folder.READ_ONLY else Folder.READ_WRITE
+  lazy val defaultPermissions = if (dryRun) JavaMailFolder.READ_ONLY else JavaMailFolder.READ_WRITE
 
 
   /**
    * Try to restore closed connections
    */
-  def ensureOpen(account: EmailAccount, folder: Folder) = {
+  def ensureOpen(account: EmailAccount, folder: JavaMailFolder) = {
 
     if (!folder.getStore.isConnected) {
       logger.info(s"reopening store connected to: ${folder.getName}")
@@ -70,7 +70,7 @@ object MailUtils {
     Transport.send(message, account.user, account.password)
   }
 
-  private def openFolder(folder: Folder, permissions: Int = defaultPermissions) = {
+  private def openFolder(folder: JavaMailFolder, permissions: Int = defaultPermissions) = {
     try {
       folder.open(defaultPermissions)
       folders += (folder.getFullName -> folder)
@@ -79,13 +79,13 @@ object MailUtils {
     }
   }
 
-  private def openFolder(store: Store, folderName: String): Folder = {
+  private def openFolder(store: Store, folderName: String): JavaMailFolder = {
     val folder = store.getFolder(folderName)
     openFolder(folder)
     folder
   }
 
-  def getFolder(account: EmailAccount, store: Store, name: String): Folder = {
+  def getFolder(account: EmailAccount, store: Store, name: String): JavaMailFolder = {
 
     val folderName = EmailAccount.getFolderName(account, name)
     if(folders.contains(folderName))
@@ -94,15 +94,14 @@ object MailUtils {
       store.getFolder(folderName)
   }
 
-  def openFolder(account: EmailAccount, folderName: String): Folder = {
+  def openFolder(account: EmailAccount, folderName: String): JavaMailFolder = {
     val store = getStore(account)
     openFolder(store, EmailAccount.getFolderName(account, folderName))
   }
 
   def readLatest(account: EmailAccount, folderName: String, callback: ProcessCallback): Unit = {
     val folder = openFolder(account, folderName)
-    val dataName = folderName + "LastRead"
-    doCallback(account, dataName, folder.asInstanceOf[IMAPFolder], callback)
+    doCallback(account, "LastRead", folder.asInstanceOf[IMAPFolder], callback)
   }
 
   def scanFolder(account: EmailAccount, folderName: String, callback: ProcessCallback, doFirstRead: Boolean = true): Unit = {
@@ -110,14 +109,14 @@ object MailUtils {
     ImapFolderScanner.scanFolder(account, mailFolder.asInstanceOf[IMAPFolder], callback, doFirstRead)
   }
 
-  def fetch(messages: Array[Message], folder: Folder): Unit = {
+  def fetch(messages: Array[Message], folder: JavaMailFolder): Unit = {
 
     logger.debug(s"fetching ${messages.length} email(s) from ${folder.getName}")
     folder.fetch(messages,defaultFetchProfile)
     logger.debug(s"finishing fetch for ${folder.getName()}")
   }
 
-  def getEmails(account: EmailAccount, messages: Array[Message], folder: Folder) = {
+  def getEmails(account: EmailAccount, messages: Array[Message], folder: JavaMailFolder) = {
     fetch(messages, folder)
     messages.map { case m:IMAPMessage => Email(new MailMessageHelper(account, m))}
   }
@@ -151,11 +150,7 @@ object MailUtils {
   }
 
   def getEmailSafe(folder: IMAPFolder, id: Long): Option[Message] = {
-    val email = folder.getMessageByUID(id)
-    if (email == null)
-      None
-    else
-      Some(email)
+    Option(folder.getMessageByUID(id))
   }
 
   def getEmails(account: EmailAccount, folderName: String, ids: util.ArrayList[Number]): Array[Email] = {
@@ -187,12 +182,12 @@ object MailUtils {
       return
     }
 
-    val fromFolder: Folder = m.message.getFolder
+    val fromFolder: JavaMailFolder = m.message.getFolder
     val store = fromFolder.getStore
     val toFolder = getFolder(m.account, store, toFolderName)
 
     if (!toFolder.isOpen)
-      openFolder(toFolder, Folder.READ_WRITE)
+      openFolder(toFolder, JavaMailFolder.READ_WRITE)
 
     val newMessage = new MimeMessage(m.message.asInstanceOf[MimeMessage])
 
@@ -213,7 +208,7 @@ object MailUtils {
     store
   }
 
-  def expunge(folder: Folder):Unit = {
+  def expunge(folder: JavaMailFolder):Unit = {
     if (!dryRun)
       folder.expunge()
   }
@@ -225,7 +220,7 @@ object MailUtils {
 
       val expunge = !dryRun
 
-      folders.values.foreach( (folder: Folder) => if (folder.isOpen) folder.close(expunge))
+      folders.values.foreach( (folder: JavaMailFolder) => if (folder.isOpen) folder.close(expunge))
       accounts.values.foreach(_.close())
     } else {
       logger.info("Exiting main program, but scanning threads are still running")
@@ -250,7 +245,7 @@ object MailUtils {
       moveTo(EmailAccount.trashFolder(m.account), m)
   }
 
-  def getUID(folder: Folder, m: Message): Long = {
+  def getUID(folder: JavaMailFolder, m: Message): Long = {
     folder match {
       case imap: IMAPFolder => imap.getUID(m)
       case pop3: POP3Folder => pop3.getUID(m).toLong
@@ -267,14 +262,12 @@ object MailUtils {
     }
   }
 
-  def getFolders(account: EmailAccount): Array[Folder] = {
-      getStore(account).getDefaultFolder.list("*").filter{
-        f => (f.getType & javax.mail.Folder.HOLDS_MESSAGES) != 0
-      }
+  def getImapFolders(account: EmailAccount): Array[IMAPFolder] = {
+      getStore(account).getDefaultFolder.list("*").map{ f => f.asInstanceOf[IMAPFolder] }
   }
 
-  def getFolderNames(account: EmailAccount): Array[String] = {
-    getFolders(account).map(_.getFullName)
+  def getFolders(account: EmailAccount): Array[Folder] = {
+    getImapFolders(account).map{ Folder(_)}
   }
 
   def hasFolder(account: EmailAccount, name: String): Boolean = {
@@ -282,8 +275,14 @@ object MailUtils {
     getStore(account).getFolder(folderName).exists()
   }
 
+  def createDataName(account: EmailAccount, dataName: String, folder: IMAPFolder) = {
+    s"${account.user}-${folder.getName}$dataName"
+  }
+
   def doCallback(account: EmailAccount, dataName: String, folder: IMAPFolder, callback: ProcessCallback): Unit = {
-    val lastScan = yaml.getOrElse(dataName, () => new LastScan)
+
+    val name = createDataName(account, dataName, folder)
+    val lastScan = yaml.getOrElse(name, () => new LastScan)
     logger.info(s" checking for emails in ${folder.getName}; last scan: $lastScan")
     lastScan.start = new Date()
 
@@ -309,7 +308,7 @@ object MailUtils {
 
       lastScan.stop = new Date()
       lastScan.lastId = emails.last.getUid()
-      yaml.set(dataName, lastScan)
+      yaml.set(name, lastScan)
     }
   }
 
