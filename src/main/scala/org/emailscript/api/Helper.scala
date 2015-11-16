@@ -2,11 +2,13 @@ package org.emailscript.api
 
 import java.io.StringWriter
 import java.text.DecimalFormat
-import java.time.{LocalDate}
+import java.time.LocalDate
 import javax.script.Bindings
 
 import com.github.mustachejava.DefaultMustacheFactory
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.DnsHelper
+import org.emailscript.helpers.LoggerFactory
+
 import scala.collection.JavaConverters._
 
 object Helper {
@@ -16,7 +18,7 @@ object Helper {
  * Useful utilities
  *
  * ==Features==
- *  - Use mustache templates @see [[http://mustache.github.io/mustache.5.html]]
+ *  - Use mustache templates @see [[http://mustache.github.io/mustache.5.body]]
  *  - Simple date calculation
  *  - Simple number formatting
  */
@@ -46,9 +48,25 @@ class Helper( scope: Bindings ) {
    */
   def requires(params: java.util.Collection[String]): Unit = requires(params.asScala)
 
+
+  /**
+   * Creates a who object to work with
+   * @param email
+   * @return
+   */
+  def who(email: String): Who = who(email, "")
+
+  /**
+   * Creates a who object to work with
+   * @param email
+   * @param name
+   * @return
+   */
+  def who(email: String, name: String): Who = Who(name, email)
+
   /**
    * You can do text formatting using mustache templates
-   * @see [[http://mustache.github.io/mustache.5.html]]
+   * @see [[http://mustache.github.io/mustache.5.body]]
    *
    * @param templateName filename of mustache template
    * @param data data to feed into template
@@ -82,8 +100,6 @@ class Helper( scope: Bindings ) {
    */
   def monthsAgo(months: Int) = java.sql.Date.valueOf(LocalDate.now().minusMonths(months))
 
-
-
   /**
    * Takes two numbers and returns what percent the numerator is of the denominator as a formatted string.
    *
@@ -101,7 +117,7 @@ class Helper( scope: Bindings ) {
 
   /**
    * Format a number using a format string
-   * @see [[http://docs.oracle.com/javase/tutorial/i18n/format/decimalFormat.html]]
+   * @see [[http://docs.oracle.com/javase/tutorial/i18n/format/decimalFormat.body]]
    *
    * @param number number to format
    * @param format format to use for example ###,###
@@ -132,5 +148,15 @@ class Helper( scope: Bindings ) {
       val rounded = number.toDouble / (1L << (z*10))
       "%.1f %sB".format(rounded, " KMGTPE".charAt(z));
     }
+  }
+
+  /**
+   * Do a dns lookup
+   * @param domain domain to query
+   * @param dnsType what kinds of dns record is expected (eg. TXT, A, MX) defaults to returning all types
+   * @return Array of text results
+   */
+  def getDnsRecords(domain: String, dnsType: String): Array[String] = {
+    new DnsHelper().getDnsRecords(domain, dnsType)
   }
 }

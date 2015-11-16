@@ -3,11 +3,38 @@ package org.emailscript.api
 import javax.mail.Address
 import javax.mail.internet.InternetAddress
 
-import org.emailscript.helpers.{ValuesMap, Tags, Values}
+import org.emailscript.helpers._
 import org.emailscript.mail.MailUtils
 
 import scala.beans.BeanProperty
 
+class WhoBean extends Importer {
+
+  override def doImport() = Who(name, email)
+  @BeanProperty var name: String = ""
+  @BeanProperty var email: String = ""
+
+  /** @group Plumbing */
+  override def hashCode() = {email.hashCode}
+
+  /** @group Plumbing */
+  override def equals(o: Any): Boolean = {
+    o match {
+      case s: String => email.equals(s.toLowerCase())
+      case who: WhoBean => who.email.equals(email)
+      case _ => false
+    }
+  }
+}
+
+object WhoBean {
+  def apply(name: String, email: String) = {
+    val bean = new WhoBean
+    bean.name = name
+    bean.email = email
+    bean
+  }
+}
 /**
  * Email address and Name of person
  *
@@ -17,33 +44,18 @@ import scala.beans.BeanProperty
  *  - Set multiple tags
  *  - Set named values
  */
-class Who extends ValuesImmutableBean {
+class Who(val name: String, val email: String, tags: Tags, values: Values ) extends Exporter {
 
-  //
-  // Bean interface
-  //
+  def doExport(): WhoBean = WhoBean(name, email)
 
-  /**
-   * Name -- eg. Odysseus Levy
-   * @group Properties
-   */
-  def setName(name: String): Unit = set('Name, name)
-  /** @group Properties */
-  def getName(): String = getOrElse('Name, "")
-
-  /**
-   * Email
-   * @group Properties
-   */
-  def setEmail(email: String): Unit = set('Email, email)
-  /** @group Properties */
-  def getEmail(): String = getOrElse('Email, "")
+  def getName(): String = name
+  def getEmail(): String = email
 
   /**
    * Host of email -- eg. hotmail.com, gmail.com, yahoo.com, etc.
    * @group Properties
    */
-  def getHost() = Who.getHost(getEmail)
+  def getHost() = Who.getHost(email)
 
   //
   // Api
@@ -55,14 +67,14 @@ class Who extends ValuesImmutableBean {
    * @param value
    * @group Functions
    */
-  def setValue(name: String, value: AnyRef) = Values.setValue(this, name, value)
+  def setValue(name: String, value: AnyRef) = values.setValue(doExport(), name, value)
 
   /**
    * Get the value for this user
    * @param name
    * @return "" if no value is set, otherwise returns the value last set with setValue()
    */
-  def getValue(name: String): AnyRef = Values.getValue(this, name)
+  def getValue(name: String): AnyRef = values.getValue(doExport, name)
 
   //
   // Tags
@@ -73,7 +85,7 @@ class Who extends ValuesImmutableBean {
    * @param tag
    * @group Functions
    */
-  def addTag(tag: String) = Tags.setTag(this, tag)
+  def addTag(tag: String) = tags.setTag(this, tag)
 
   /**
    * Checks to see if this use has the given tag set
@@ -81,48 +93,47 @@ class Who extends ValuesImmutableBean {
    * @return
    * @group Functions
    */
-  def hasTag(tag: String): Boolean = Tags.hasTag(this, tag)
+  def hasTag(tag: String): Boolean = tags.hasTag(this, tag)
 
   /**
    * Remove a given tag
    * @param tag
    * @group Functions
    */
-  def removeTag(tag: String) = Tags.removeTag(this, tag)
+  def removeTag(tag: String) = tags.removeTag(this, tag)
 
   /**
    * Get all tags set for this user
    * @group Functions
    */
-  def getTags(): Set[String]= Tags.getTags(this)
+  def getTags(): Set[String]= tags.getTags(this)
 
   /**
    * Determine if the given email is valid
    * @group Functions
    */
-  def isValid(): Boolean = MailUtils.isValidEmail(getEmail)
+  def isValid(): Boolean = MailUtils.isValidEmail(email)
 
   //
   // Plumbing
   //
 
   /** @group Plumbing */
-  override def hashCode() = {getEmail.hashCode}
+  override def hashCode() = {email.hashCode}
 
   /** @group Plumbing */
   override def equals(o: Any): Boolean = {
     o match {
-      case s: String => getEmail.equals(s.toLowerCase())
-      case who: Who => who.getEmail.equals(getEmail)
+      case who: Who => who.email.equals(email)
       case _ => false
     }
   }
 
   /** @group Plumbing */
-  override def toString = {s"$getName<$getEmail>"}
+  override def toString = {s"$name<$email>"}
 
   /** @group Plumbing */
-  def toAddress():Address = new InternetAddress(getEmail, getName)
+  def toAddress():Address = new InternetAddress(email, name)
 }
 
 object Who {
@@ -136,14 +147,12 @@ object Who {
       ""
     else
       email.substring(index + 1)
-
   }
 
   def apply(name: String, email: String) = {
-    val who = new Who()
-    who.setEmail(email)
-    who.setName(name)
-    who
+    val tags = Tags.getTags("who_tags")
+    val values = Values.getValues[WhoBean]("who_values")
+    new Who(name, email.toLowerCase(), tags, values)
   }
 
   def apply(address: Address): Who = {

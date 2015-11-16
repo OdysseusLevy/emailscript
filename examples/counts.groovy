@@ -22,8 +22,6 @@ class Count {
     def String toString() {" count: ${count} read: ${read}"}
 }
 
-def folder = "Inbox"
-def emails = MyEmail.getEmails(folder)
 def counts = [:]
 
 def increment(counts, email) {
@@ -35,9 +33,15 @@ def increment(counts, email) {
     counts[email.from] = currentCount
 }
 
-logger.info ("found ${emails.length} emails")
+//
+// Scan through all emails in Inbox
+//
 
-for ( email in emails) {
+def folder = "Inbox" // change this if you want to scan a different folder
+def total = 0
+
+MyEmail.foreach(folder){ email ->
+    total++
     increment(counts, email)
 }
 
@@ -46,7 +50,7 @@ sorted = sorted.values().toList()
 
 def result = sorted.size() <= 200 ? sorted : sorted[0..199] // truncate if too large
 
-def html = Helper.execute("table.ms", [folder: folder, size: emails.size(), counts: result])
+def html = Helper.execute("table.ms", [folder: folder, size: total, counts: result])
 
 def mail = MyEmail.newMail()
 mail.setSubject("Counts")

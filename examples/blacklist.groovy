@@ -1,23 +1,25 @@
 // Continuously scan the "Junk" folder for new mails
 
-MyEmail.scanFolder("Junk"){emails ->    // This closure is called whenever we get new mail (or run for first time)
+Gmail.scanFolder("Junk"){email ->    // This closure is called whenever we get new mail (or run for first time)
 
-    for(email in emails){
-        if (!email.from.hasTag("blacklisted")){
-            logger.info("Blacklisting; from: ${email.from}")
-            email.from.addTag("blacklisted", true)
-        }
+    logger.info("from: $email.from subject: $email.subject")
+    if (!email.from.hasTag("blacklisted")){
+        logger.info("Blacklisting; from: ${email.from}")
+        email.from.addTag("blacklisted")
     }
 }
 
 // Continuously scan the "Inbox" folder for new mails
 
-MyEmail.scanFolder("Inbox"){emails -> // This closure is called whenever we get new mail (or run for first time)
+Gmail.scanFolder("Inbox"){email -> // This closure is called whenever we get new mail (or run for first time)
 
-    for(email in emails){
-         if (email.from.hasTag("blacklisted")){
-            logger.info("$email.from is blacklisted")
-             email.moveTo("Junk")
-         }
+    logger.info("from: $email.from subject: $email.subject blacklisted? ${email.from.hasTag("blacklisted")}")
+    if (email.moveHeader) {
+        logger.info("Mail manually moved back to Inbox; from: ${email.from} subject: ${email.subject}")
+        email.from.removeTag("blacklisted")
     }
+     if (email.from.hasTag("blacklisted")){
+        logger.info("$email.from is blacklisted")
+         email.moveTo("Junk")
+     }
 }

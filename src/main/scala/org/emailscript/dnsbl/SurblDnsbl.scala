@@ -1,14 +1,13 @@
 package org.emailscript.dnsbl
 
-import com.typesafe.scalalogging.slf4j.Logger
-import org.slf4j.LoggerFactory
+import org.emailscript.helpers.LoggerFactory
 
 import scala.io.Source
 
 case class Subdomains(two: String = "", three: String = "", four: String = "")
 
 object SurblDnsbl {
-  val logger = Logger(LoggerFactory.getLogger(getClass))
+  val logger = LoggerFactory.getLogger(getClass)
   val SurblHost = "multi.surbl.org"
 
   def concat(subs: Array[String], count: Int): String = {

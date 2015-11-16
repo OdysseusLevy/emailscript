@@ -4,7 +4,6 @@ import java.io.{File, FileReader}
 import javax.script.ScriptEngineManager
 
 import com.google.common.io.Files
-import org.slf4j.LoggerFactory
 
 /**
  * Run scripts
@@ -17,6 +16,7 @@ object ScriptHelper {
   def getEngineName(f: File): String = {
     Files.getFileExtension(f.getName) match {
       case "ruby" => "ruby"
+      case "rb" => "ruby"
       case "groovy" => "groovy"
       case _ => "nashorn"
     }

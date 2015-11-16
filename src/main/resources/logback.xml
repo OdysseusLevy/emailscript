@@ -35,9 +35,19 @@
         </encoder>
     </appender>
 
+    <!-- Uncomment this if you want to some or all logs to go to something like solr -->
+   <appender name="LOGGER" class="org.emailscript.helpers.IndexAppender" level="WARN">
+        <url>http://localhost:8983/solr/logs</url>
+        <level>WARN</level>
+   </appender>
+
+    <logger name="uk.co.bigbeeconsultants.http" level="WARN"/>
+
     <root level="INFO">
         <appender-ref ref="SIFT" />
         <appender-ref ref="STDOUT" />
+        <!-- Uncomment this as well if you want to send logs out to something like solr -->
+        <appender-ref ref="LOGGER" />
     </root>
 
 </configuration>

@@ -1,20 +1,19 @@
 Helper.requires(["MyEmail","MailRules"])
 
 //
+// Keeps my inbox clear of junk
+// Uses MailRules.yaml to share info with daily.groovy
+//
+
+//
 // Spam
 //
 
-def spamFolder = MailRules.Spam?.folder
+MyEmail.scanFolder(MailRules.SpamFolder){ email ->
 
-// Check for spam
-
-if (spamFolder) {
-
-    MyEmail.scanFolder(spamFolder){ emails ->
-        for (email in emails) {
-            email.from.removeTag("whitelist")
-            email.from.setValue("Category", spamFolder)
-        }
+    if (email.moveHeader != MailRules.SpamFolder) {// manually moved to this folder
+        logReason(email, "Manually moved to Spam folder")
+        email.from.setValue("folder", MailRules.SpamFolder)
     }
 }
 
@@ -22,17 +21,14 @@ if (spamFolder) {
 // Sent message recipients are whitelisted
 //
 
-MyEmail.scanFolder("Sent"){ emails ->
-    logger.info("scanning sent emails")
+MyEmail.scanFolder("Sent"){ email ->
+    def sentTo = email.to + email.cc + email.bcc
 
-    for(email in emails) {
-        def sentTo = email.to + email.cc + email.bcc
-        logger.info("mail sent to $sentTo, subject ${email.subject}")
+    logReason(email, "mail sent to $sentTo, whitelisting them")
 
-        for (who in sentTo){
-            who.addTag("Sent")
-            who.addTag("whitelist")
-        }
+    for (who in sentTo){
+        who.addTag("Sent")
+        who.setValue("folder","Inbox")
     }
 }
 
@@ -40,59 +36,88 @@ MyEmail.scanFolder("Sent"){ emails ->
 // Inbox
 //
 
-def getCategoryName(email) {
-    if (MailRules.CategoryRules) {
-        for(rule in MailRules.CategoryRules) {
-            if (rule.subjectContains && email.subject.toLowerCase().contains(rule.subjectContains.toLowerCase()))
-                return rule.category
-            if (rule.host && email.from.host == rule.host)
-                return rule.category
+// This logs to an external JSON database (Solr). I can then easily see what decisions were made for a given
+// email
+
+def logReason(email, explanation) {
+    Notes.indexNote(email, explanation)
+    logger.info("Inbox; from: $email.from subject: $email.subject; $explanation, uid: $email.uid")
+}
+
+def blacklist(email) {
+    email.from.removeTag("whitelist")
+    email.from.addTag("blacklist")
+}
+
+def whitelist(email) {
+
+    if (!email.from.hasTag("whitelist")) {
+        logger.info("Adding ${email.from} to whitelist")
+        email.from.addTag("whitelist")
+        email.from.removeTag("blacklist")
+    }
+}
+
+def checkCategory(email) {
+
+    def category = getCategory(email)
+    if (category && MailRules.Categories[category]){
+        if (MailRules.Categories[category].whitelist && !email.from.getValue("folder") != "Inbox"){
+            logReason(email, "whitelisting sender because it is in category $category")
+            email.from.addTag("whitelist")
         }
+    }
+}
+
+def getCategory(email) {
+    for(rule in MailRules.Rules){
+        if (rule.subjectContains && email.subject.contains(rule.subjectContains) )
+            return rule.category
+        else if (rule.host && email.from.host == rule.host)
+            return rule.category
     }
 
     email.from.getValue("Category")
 }
 
-def isBlacklisted(category, email) {
-    if (category)
-        category.blacklist == true
-    else if (MailRules.Hardcore)
-        !email.from.hasTag("whitelist")
-    else
-        email.from.hasTag("blacklist")
-}
+MyEmail.scanFolder("Inbox"){email ->
 
-MyEmail.scanFolder("Inbox"){emails ->
+    // First check our rules to see if we should whitelist the sender
 
-    for(email in emails){
+    checkCategory(email)
 
-        def categoryName = getCategoryName(email)
-        def category = MailRules.Categories[categoryName]
+    // 1: Check for mails manually moved back into Inbox
 
-        def isBlacklisted = isBlacklisted(category, email)
+    if (email.moveHeader) {
+        logReason(email, "Manually moved back into Inbox from ${email.moveHeader}, whitelisting")
+        whitelist(email)
+    }
 
-        if (MailRuiles.Hardcore&& !isBlacklisted && !email.from.hasTag("whitelist")){
-            logger.info("whitelisting $email.from")
-            email.from.addTag("whitelist")
+    // 2: Check for whitelisted
+
+    else if (email.from.hasTag("whitelist")){
+        logReason(email, "sender is explicitly whitelisted, keeping in inbox")
+    }
+
+    // 3: Check for blacklisted
+
+    else if (email.from.hasTag("blacklist")){
+        logReason(email, "sender is explicitly blacklist, moving to Spam")
+        email.moveTo(MailRules.SpamFolder)
+    }
+        
+    // 4: None of the above. Figure out where to move it
+
+    else {
+        if (email.isVerifiedHost) {
+            logReason(email, "does not match any rules, not explicitly whitelisted, sender looks legit, moving to Bulk folder")
+            email.moveTo(MailRules.BulkFolder)
         }
-
-        logger.info("Inbox; from: $email.from subject: ${email.subject} category: $categoryName blacklisted?: ${isBlacklisted}")
-
-        // Check for mails manually moved back into Inbox
-
-        if (email.moveHeader) {
-            logger.info("Manually moved back into Inbox from  ${email.moveHeader}")
-            email.from.addTag("whitelist")
-            email.from.setValue("Category", "")
-        }
-        else if (isBlacklisted){
-            if (category)
-                email.moveTo(categoryName)
-            else if (MailRules.BulkFolder && email.isVerifiedHost)
-                email.moveTo(MailRules.BulkFolder)
-            else
-                email.moveTo(spamFolder)
+        else{
+            logReason(email, "does not match any rules, not explicitly whitelisted, sender maybe not legit, moving to Spam folder")
+            email.moveTo(MailRules.SpamFolder)
         }
 
     }
+
 }

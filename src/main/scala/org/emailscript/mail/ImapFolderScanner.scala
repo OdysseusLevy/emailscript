@@ -1,42 +1,38 @@
 package org.emailscript.mail
 
 import java.time.Duration
-import javax.mail.{FolderClosedException, MessagingException}
+import javax.mail.FolderClosedException
 
 import com.sun.mail.imap.IMAPFolder
 import com.sun.mail.imap.IMAPFolder.ProtocolCommand
 import com.sun.mail.imap.protocol.IMAPProtocol
-import org.emailscript.api.{EmailAccount, ScriptCallback}
-import org.slf4j.LoggerFactory
+import org.emailscript.api.{EmailAccount, ProcessCallback}
+import org.emailscript.helpers.LoggerFactory
 
 
 /**
- * Utility to continuously scan for mails added to an imap folder
- *
- * Uses the Imap IDLE command to wait until emails arrive
- * Uses another thread to periodically refresh that IDLE (otherwise it will silently timeout)
- *
- * Code adapted from an answer found here: http://stackoverflow.com/questions/4155412/javamail-keeping-imapfolder-idle-alive
+  * Utility to continuously scan for mails added to an imap folder
+  *
+  * Uses the Imap IDLE command to wait until emails arrive
+  * But sometimes a server will silently timeout while we are in IDLE and we stop getting messages
+  *
+  * So we use a separate thread to periodically send NOOPs to the email server. This does two things. It is a keepalive
+  * for our server network connection and it also pops us out of our IDLE wait.
+  *
+  * We then can start a fresh IDLE session with the server
+  *
+  * Code adapted from an answer found here: http://stackoverflow.com/questions/4155412/javamail-keeping-imapfolder-idle-alive
  */
-class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: Boolean, callback: ScriptCallback) extends Runnable {
+class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: Boolean, callback: ProcessCallback) extends Runnable {
 
   import ImapFolderScanner._
 
-  val logger = LoggerFactory.getLogger(getClass)
-  val NOOP = "NOOP"
+  val dataName = "LastScan"
 
-  val dataName = folder.getName + "LastScan"
-
-  // Thread to periodically sent keep alive (noop) messages to the server
+  // Thread to periodically sent NOOP messages to the server. The mail server will then send a message to us which will break
+  // us out of our IDLE
 
   val keepAlive = new Thread(folder.getName + "-Idle" ){
-
-    val noopCommand = new ProtocolCommand {
-      override def doCommand(protocol: IMAPProtocol): Object = {
-        protocol.simpleCommand(NOOP, null)
-        null
-      }
-    }
 
     override def run() {
       while (!isInterrupted) {
@@ -45,9 +41,9 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
           logger.debug(s"Thread $getName is sleeping...")
           Thread.sleep(KEEP_ALIVE_FREQ)
 
-          // Perform a NOOP just to keep alive the connection
-          logger.info("Performing a NOOP to keep the connection alive")
-          MailUtils.ensureOpen(folder)
+          // Perform a NOOP to have us exit from idle
+          logger.info(s"Performing a NOOP on ${folder.getName} to trigger exit from IDLE")
+          MailUtils.ensureOpen(account, folder)
           folder.doCommand(noopCommand)
         }
         catch {
@@ -70,30 +66,54 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
       MailUtils.doCallback(account, dataName, folder, callback)
 
 
-    // Start a separate thread to send keep alive messages to the server
+    // Start a separate thread to periodically interrupt us
 
     keepAlive.start()
 
-    // Now got to sleep until the mail server wakes us up
+    // Now start our IDLE
 
+    var waitMillis = 0L
     while (!Thread.interrupted()) {
       logger.debug("Starting IDLE")
       try {
-        MailUtils.ensureOpen(folder)
+
+        if (waitMillis > 0) {
+          logger.info(s"Sleeping ${waitMillis/1000} seconds to give email server time to restart")
+          Thread.sleep(waitMillis)
+        }
+
+        MailUtils.ensureOpen(account, folder)
+        waitMillis = 0L
 
         folder.idle(true)
         logger.debug("returning from idle")
-        MailUtils.doCallback(account, dataName,folder, callback)
+        MailUtils.doCallback(account, dataName, folder, callback)
 
+        // Folders keep a cache of all opened messages. This is a memory leak. Only folder.close() will flush this.
+
+        // REVIEW: closing/reopening might be expensive network wise, consider closing less often or opening using the
+        // ResyncData info (to minimize network roundtrips)
+
+        logger.debug(s"closing folder ${folder.getName}")
+        folder.close(true)
       }
       catch {
         case closed: FolderClosedException =>
           logger.warn(s" Folder ${folder.getName} is closed. isOpen: ${folder.isOpen}", closed)
+          waitMillis = WaitMillis
+        case error: javax.mail.StoreClosedException =>
+          logger.warn(s" The javamail Store for Folder ${folder.getName} is closed", error)
+          waitMillis = WaitMillis
+        case error: javax.mail.FolderClosedException =>
+          logger.warn(s" Folder ${folder.getName} is closed", error)
+          waitMillis = WaitMillis
+        case error: IllegalStateException =>
+          logger.warn(s"Folder ${folder.getName} illegal state", error)
+          waitMillis = WaitMillis
         case e: Throwable =>
           logger.error(s"Error running scanning callback on folder: ${folder.getName}", e)
           keepAlive.interrupt() //we want both threads to stop now
           throw new RuntimeException(e)
-
       }
     }
 
@@ -114,12 +134,20 @@ object ImapFolderScanner {
 
   val logger = LoggerFactory.getLogger(getClass)
   val KEEP_ALIVE_FREQ = Duration.ofMinutes(9).toMillis // rumor has it that gmail only allows 10 minute connections
+  val WaitMillis = Duration.ofSeconds(5).toMillis
+
+  val noopCommand = new ProtocolCommand {
+    override def doCommand(protocol: IMAPProtocol): Object = {
+      protocol.simpleCommand("NOOP", null)
+      null
+    }
+  }
 
   var threads = Map[IMAPFolder, Thread]()
 
   def isDone = threads.size == 0
 
-  def scanFolder(account: EmailAccount, folder: IMAPFolder, callback: ScriptCallback, doFirstRead: Boolean): Unit = {
+  def scanFolder(account: EmailAccount, folder: IMAPFolder, callback: ProcessCallback, doFirstRead: Boolean): Unit = {
 
     val scanner = new ImapFolderScanner(account, folder, doFirstRead, callback)
     val listenerThread = new Thread(scanner, folder.getName + "-Scanner" )

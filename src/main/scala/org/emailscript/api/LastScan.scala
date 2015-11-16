@@ -24,4 +24,5 @@ object LastScan {
     bean.setLastId(lastId)
     bean
   }
+
 }

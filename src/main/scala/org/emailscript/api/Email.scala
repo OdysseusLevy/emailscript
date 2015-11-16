@@ -3,8 +3,10 @@ package org.emailscript.api
 import java.net.URL
 import java.util.Date
 
+import org.emailscript.dkim.DkimResult
 import org.emailscript.dnsbl.DnsblResult
 import org.emailscript.mail.MailMessageHelper
+
 import scala.collection.JavaConverters._
 
 /**
@@ -14,9 +16,9 @@ import scala.collection.JavaConverters._
  *  - Move to other folder
  *  - Delete (safe and permanent)
  *  - Check for spam links
- *  - Check for verified header (useful for spam detection)
+ *  - Dkim verification (authenticates headers and body)
  */
-class MailMessage(helper: MailMessageHelper) {
+class Email(helper: MailMessageHelper) {
 
   /**
    * Email subject
@@ -61,8 +63,12 @@ class MailMessage(helper: MailMessageHelper) {
   /**
    * Universal ID
    */
-
   def getUid(): Long = helper.uid
+
+  /**
+   * Folder this message lives in
+   */
+  def getFolder(): String = helper.folder
 
   /**
    * Body Text
@@ -94,15 +100,44 @@ class MailMessage(helper: MailMessageHelper) {
   def getHeaders(): java.util.Map[String, String] = helper.headers.asJava
 
   /**
+   * Attachments
+   */
+  def getAttachments(): Array[Attachment] = helper.attachments
+
+  /**
    * Message size in bytes
    */
   def getSize(): Int = helper.size
 
+  //
+  // DKIM stuff
+  //
+
   /**
-   * Is the host verified by the DKIM standars?
+   * Do a full DKIM verification of both the headers and the body
+   * @return DkimResult
+   */
+  def getDkim: DkimInfo = DkimInfo(helper.dkimResult)
+
+  /**
+    * Do a DKIM verification on only the headers.
+    *
+    * This will be significantly faster than do a full verify, so sometimes it is preferred
+    */
+  def getDkimHeader = DkimInfo(helper.dkimHeader)
+
+  /**
+    * Same as getDkimHeader() except that we just want to know what the verified host is
+    * @return if valid DKIM signature, the dkim host is returned else returns empty string
+    */
+  def getVerifiedHost(): String = helper.verifiedHost
+
+  /**
+   * Is the host verified by the DKIM standard?
    * Very useful for detecting spam
    */
   def getIsVerifiedHost(): Boolean = helper.verifiedHost != "" //For groovy java bean
+
   //
   // Time stuff
   //
@@ -138,11 +173,16 @@ class MailMessage(helper: MailMessageHelper) {
   def getMoveHeader(): String = helper.moveHeader.getOrElse("")
 
   def hasHeader(name: String): Boolean = helper.hasHeader(name)
-  def getHeader(name: String): Option[String] = helper.getHeader(name)
+  def getHeader(name: String): String = helper.getHeader(name).getOrElse(null)
 
   //
   // Commands
   //
+
+  /**
+   * Debugging utility
+   */
+  def dumpStructure(): Unit = helper.dumpStructure
 
   /**
    * Check if this email was sent to the given email
@@ -166,8 +206,11 @@ class MailMessage(helper: MailMessageHelper) {
    * @param permanent if true, permanently deleted, otherwise the email is moved to the "Trash" folder
    */
   def delete(permanent: Boolean): Unit = helper.delete(permanent)
+
+  def saveToFile(fileName: String): Unit = helper.saveToFile(fileName)
+
 }
 
-object MailMessage {
-  def apply(helper: MailMessageHelper) = new MailMessage(helper)
+object Email {
+  def apply(helper: MailMessageHelper) = new Email(helper)
 }

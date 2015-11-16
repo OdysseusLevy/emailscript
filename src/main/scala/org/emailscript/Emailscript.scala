@@ -2,25 +2,16 @@ package org.emailscript
 
 import java.io.File
 
-import ch.qos.logback.classic.LoggerContext
-import ch.qos.logback.core.util.StatusPrinter
 import com.google.common.io.Files
-import org.emailscript.helpers.{Values, Tags, ScriptHelper}
+import org.emailscript.helpers._
 import org.emailscript.mail.MailUtils
-import org.slf4j.{LoggerFactory, MDC}
+
 
 object Emailscript {
 
   val logger = LoggerFactory.getLogger(getClass)
   val usage = "[-h | --help] [-debugLogging] [-dryrun] scriptname"
 
-  /**
-   * Use this when something is not working with the logger
-   */
-  def debugLogging() {
-    val lc = LoggerFactory.getILoggerFactory.asInstanceOf[LoggerContext]
-    StatusPrinter.print(lc)
-  }
 
   def getScriptName(args: Array[String]): String = {
     if (args.length == 0)
@@ -50,13 +41,12 @@ object Emailscript {
     }
 
     //
-    // Configure our logger to output to <scriptName>.log (see logback.xml config file)
+    // Configure the logger used by our script to output to <scriptName>.log (see logback.xml config file)
     //
-
-    MDC.put("script", Files.getNameWithoutExtension(getScriptName(args)))
+    Logger.setScriptLogName(Files.getNameWithoutExtension(getScriptName(args)))
 
     if (args.contains("-debugLogging"))
-      debugLogging()
+      Logger.debugLogging()
 
     MailUtils.dryRun = if (args.contains("-dryrun")) true else false
     if (MailUtils.dryRun){

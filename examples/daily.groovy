@@ -24,10 +24,7 @@ def applyRules(folder, policy) {
 	
     // Check any emails added since last time
 
-    MyEmail.readLatest(folder, { emails ->
-        logger.info("${emails.size()} new emails found in $folder")
-        for(email in emails) {
-
+    MyEmail.readLatest(folder, { email ->
             if (email.moveHeader != folder) {
                 logger.info("Email moved to $folder manually from folder: ${email.moveHeader}, updating info; from: ${email.from} subject: ${email.subject}")
 
@@ -37,7 +34,6 @@ def applyRules(folder, policy) {
                 else
                     email.from.removeTag("whitelist")
             }
-        }
     })
 
     // If this policy has a folderDays property set get rid of any mails older than that
@@ -90,7 +86,7 @@ for(email in emails){
 }
 
 def getCategory(email) {
-    for(rule in MailRules.CategoryRules){
+    for(rule in MailRules.Rules){
         if (rule.subjectContains && email.subject.contains(rule.subjectContains) )
             return rule.category
         else if (rule.host && email.from.host == rule.host)
