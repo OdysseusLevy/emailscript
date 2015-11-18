@@ -42,8 +42,10 @@ class IndexAppender extends AppenderBase[ILoggingEvent] {
   def setLevel(level: Level) = this.level = level
 
   override def start(): Unit = {
-    if (StringUtil.isEmpty(url))
-      throw new Exception("Missing url in the Logging indexer configuration")
+    if (StringUtil.isEmpty(url)){
+      addError("Missing url in the Logging indexer configuration")
+      return
+    }
 
     super.start()
   }

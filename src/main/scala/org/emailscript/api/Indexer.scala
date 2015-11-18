@@ -1,6 +1,6 @@
 package org.emailscript.api
 
-import java.net.URL
+import java.net.{ConnectException, URL}
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -134,7 +134,8 @@ class Indexer(val url: String) extends Exporter {
       if (!response.status.isSuccess)
         logger.warn(s"status: ${response.status.message} response = ${response.body.asString}")
     } catch {
-      case e: Throwable => logger.warn(s"Could not post to $url", e)
+      case e: ConnectException => logger.debug("Connection not working")
+      case e: Throwable => logger.info(s"Could not post to $url", e)
     }
   }
 

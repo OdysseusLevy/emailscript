@@ -1,48 +1,47 @@
 Helper.requires(["MyEmail","MailRules"])
 
-def categories = MailRules.Categories
+def folderRules = MailRules.Folders // MailRules is a yml file in the config folder
 
 //
-// First visit all of the folders associated with our categories and clear out old mail, etc.
+// First visit all of the folders where we have rules defined
 //
 
-categories.each { category, policy -> applyRules(category, policy) }
+folderRules.each { folderName, rules -> applyRules(folderName, rules) }
 
-// For a given folder look for mails manually moved into the folder. Also clean out old emails if that is the
-// policy for this folder
+// For a given folder look for mails manually moved into the folder. Also clean out old emails if that is in the
+// rules for this folder
 
-def applyRules(folder, policy) {
+def applyRules(folderName, rules) {
 
-    logger.info("Applying rules for folder: $folder policy: $policy")
-    if (policy.skipScan)
+    logger.info("Applying rules for folder: $folderName rules: $rules")
+    if (rules.skipScan)
         return
 
-	if (!MyEmail.hasFolder(folder)){
-		logger.warn("Configuration Error! Can not find folder: $folder")
+	if (!MyEmail.hasFolder(folderName)){
+		logger.warn("Configuration Error! Can not find folder: $folderName")
 	    return
 	}
-	
-    // Check any emails added since last time
 
-    MyEmail.readLatest(folder, { email ->
-            if (email.moveHeader != folder) {
-                logger.info("Email moved to $folder manually from folder: ${email.moveHeader}, updating info; from: ${email.from} subject: ${email.subject}")
+    // Check for any emails.froms that do not have their "Folder" value set
 
-                email.from.setValue("Category", folder)
-                if (policy.whitelist)
-                    email.from.addTag("whitelist")
-                else
-                    email.from.removeTag("whitelist")
-            }
-    })
+    MyEmail.readLatest(folderName) { email ->
 
-    // If this policy has a folderDays property set get rid of any mails older than that
+        if (email.from.getValue("Folder") != folderName){
+            logger.info("From: ${email.from} subject: ${email.subject} setting folder to ${folderName}")
 
-    if (policy.folderDays) {
+            email.from.setValue("Folder", folderName)
+            if (rules.whitelist)
+                email.from.addTag("whitelist")
+        }
+    }
 
-        def daysAgo = Helper.daysAgo(policy.folderDays)
-        logger.info("looking for emails before: $daysAgo in $folder")
-        emails = MyEmail.getEmailsBefore(folder, daysAgo)
+    // If the rules have a folderDays property set get rid of any mails older than that
+
+    if (rules.folderDays) {
+
+        def daysAgo = Helper.daysAgo(rules.folderDays)
+        logger.info("looking for emails before: $daysAgo in $folderName")
+        emails = MyEmail.getEmailsBefore(folderName, daysAgo)
         for(email in emails) {
             logger.info("removing old mail from: ${email.from} subject: ${email.subject} daysAgo: ${email.daysAgo}")
             email.delete()
@@ -55,17 +54,28 @@ def applyRules(folder, policy) {
 // Next, go through inbox emails looking for mails we should move to a folder
 //
 
+def getFolder(email) {
+    for(rule in MailRules.Rules){
+        if (rule.subjectContains && email.subject.contains(rule.subjectContains) )
+            return rule.folder
+        else if (rule.host && email.from.host == rule.host)
+            return rule.folder
+    }
+
+    email.from.getValue("Folder")
+}
+
 def counts = [:]
 def emails = MyEmail.getEmails("Inbox")
 emails = emails.reverse()   //want newest to oldest
 
 for(email in emails){
 
-    def category = getCategory(email)
-    if (!category)
+    def folder = getFolder(email)
+    if (!folder)
         continue
 
-    def rule = categories[category]
+    def rule = folderRules[folder]
     if (!rule)
         continue
 
@@ -76,22 +86,12 @@ for(email in emails){
 
     if (rule.inboxMax && counts[email.from] > rule.inboxMax) {
         logger.info("email from: ${email.from} subject: ${email.subject} count: ${counts[email.from]} > ${rule.inboxMax}")
-        email.moveTo(category)
+        email.moveTo(folder)
     }
 
     if (rule.inboxDays &&  email.daysAgo > rule.inboxDays){
         logger.info("mail from: ${email.from} subject: ${email.subject} daysAgo: ${email.daysAgo} > ${rule.inboxDays}")
-        email.moveTo(category)
+        email.moveTo(folder)
     }
 }
 
-def getCategory(email) {
-    for(rule in MailRules.Rules){
-        if (rule.subjectContains && email.subject.contains(rule.subjectContains) )
-            return rule.category
-        else if (rule.host && email.from.host == rule.host)
-            return rule.category
-    }
-
-    email.from.getValue("Category")
-}

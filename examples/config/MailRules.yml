@@ -5,23 +5,23 @@ SpamFolder: Junk
 
 Rules:
     - subjectContains: Emailscript
-      category: Emailscript
+      folder: Emailscript
     - host: hai.com
-      category: HAI
+      folder: HAI
     - host: facebookmail.com
-      category: Social
+      folder: Social
     - subjectContains: Jaiya
-      category: friends
+      folder: friends
     - subjectContains: Ulysses
-      category: friends
+      folder: friends
 
-Categories:
+Folders:
     Emailscript:
         skipScan: true
         whitelist: true
         saveUnread: true
         inboxDays: 7
-    HAI
+    HAI:
         inboxMax: 5
         whitelist: true
     Notifications:
@@ -31,9 +31,9 @@ Categories:
         inboxMax: 2
         whitelist: true
     Bulk:
-        folderDays: 60
+        folderDays: 70
     Junk:
-        folderDays: 45
+        folderDays: 50
         blacklist: true
     Social:
         inboxMax: 2

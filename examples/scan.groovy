@@ -58,33 +58,32 @@ def whitelist(email) {
     }
 }
 
-def checkCategory(email) {
+def checkFolderRules(email) {
 
-    def category = getCategory(email)
-    if (category && MailRules.Categories[category]){
-        if (MailRules.Categories[category].whitelist && !email.from.getValue("folder") != "Inbox"){
-            logReason(email, "whitelisting sender because it is in category $category")
-            email.from.addTag("whitelist")
+    def folderName = getFolderName(email)
+    if (folderName && MailRules.Folders[folderName]){
+        if (MailRules.Folders[folderName].whitelist){
+            whiteList(email)
         }
     }
 }
 
-def getCategory(email) {
+def getFolderName(email) {
     for(rule in MailRules.Rules){
         if (rule.subjectContains && email.subject.contains(rule.subjectContains) )
-            return rule.category
+            return rule.folder
         else if (rule.host && email.from.host == rule.host)
-            return rule.category
+            return rule.folder
     }
 
-    email.from.getValue("Category")
+    email.from.getValue("Folder")
 }
 
 MyEmail.scanFolder("Inbox"){email ->
 
     // First check our rules to see if we should whitelist the sender
 
-    checkCategory(email)
+    checkFolderRules(email)
 
     // 1: Check for mails manually moved back into Inbox
 
