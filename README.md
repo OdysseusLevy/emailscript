@@ -62,6 +62,8 @@ Send your comments/scripts to odysseus-at-cosmosgame.org. Put "Emailscript" some
 
 ##Versions
 
+* 0.3.2 Fixed memory leak, Folder api
+* 0.3.1 Dkim fixups
 * 0.3.0 11/22/2015 DKIM, api improvements, export to external DB via JSON (eg. Solr)
 * 0.2.1 1/26/2015 Bug fixes, more samples
 * 0.2.0 1/19/2015 Samples, Documentation
