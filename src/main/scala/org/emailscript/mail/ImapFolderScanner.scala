@@ -61,9 +61,11 @@ class ImapFolderScanner(account: EmailAccount, folder: IMAPFolder, doFirstRead: 
 
   override def run() {
 
+    var currentFolder = folder
+
     // Run the callback right away
     if (doFirstRead)
-      MailUtils.doCallback(account, dataName, folder, callback)
+      MailUtils.doCallback(account, dataName, currentFolder, callback)
 
 
     // Start a separate thread to periodically interrupt us

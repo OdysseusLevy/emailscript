@@ -6,7 +6,15 @@ import java.util.function.BiFunction
 import com.google.common.base.Strings
 import scala.collection.JavaConverters._
 
-class Tags(dataName: String, dataHandler: DataHandler) {
+trait TagsI {
+  def setTag(o: AnyRef, name: String): Unit
+  def hasTag(o: AnyRef, _name: String): Boolean
+  def removeTag(o: AnyRef, _name: String): Unit
+  def getTags(o: AnyRef): Set[String]
+}
+
+
+class Tags(dataName: String, dataHandler: DataHandler) extends TagsI {
 
   type TagSet = Set[String]
   type TagMap = java.util.concurrent.ConcurrentHashMap[AnyRef, TagSet ]
@@ -15,7 +23,8 @@ class Tags(dataName: String, dataHandler: DataHandler) {
 
   lazy val tagMap: TagMap = load()
 
-  def setTag(o: AnyRef, _name: String): Unit = {
+
+  override def setTag(o: AnyRef, _name: String): Unit = {
     if (hasTag(o, _name))
       return // already set
 
@@ -31,7 +40,7 @@ class Tags(dataName: String, dataHandler: DataHandler) {
     tagMap.compute(o, update)
   }
 
-  def hasTag(o: AnyRef, _name: String): Boolean = {
+  override def hasTag(o: AnyRef, _name: String): Boolean = {
     val tag = _name.toLowerCase
     if (Strings.isNullOrEmpty(tag) || !tagMap.containsKey(o))
       false
@@ -40,13 +49,13 @@ class Tags(dataName: String, dataHandler: DataHandler) {
     }
   }
 
-  def removeTag(o: AnyRef, _name: String): Unit = {
+  override def removeTag(o: AnyRef, _name: String): Unit = {
     val tag = _name.toLowerCase
     if (!Strings.isNullOrEmpty(tag) && tagMap.containsKey(o))
       tagMap.put(o, tagMap.get(o) - tag)
   }
 
-  def getTags(o: AnyRef): Set[String] = {
+  override def getTags(o: AnyRef): Set[String] = {
     tagMap.putIfAbsent(o, Set())
     tagMap.get(o)
   }
@@ -86,6 +95,14 @@ class Tags(dataName: String, dataHandler: DataHandler) {
     toConcurrent(data)
   }
 }
+
+object EmptyTags extends TagsI{
+  override def setTag(o: AnyRef, name: String): Unit = {}
+  override def removeTag(o: AnyRef, _name: String): Unit = {}
+  override def getTags(o: AnyRef): Set[String] = Set()
+  override def hasTag(o: AnyRef, _name: String): Boolean = false
+}
+
 /**
  * Lets us add tags for objects
  */

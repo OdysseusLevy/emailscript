@@ -49,4 +49,14 @@ class TagsTest extends FlatSpec with Matchers {
     doTagTest(tags2, who1, who2)
   }
 
+  "NoOne object" should "ignore tags and values" in {
+
+    Who.NoOne.addTag("test")
+    Who.NoOne.hasTag("test") should be (false)
+
+    Who.NoOne.setValue("test", "value")
+    Who.NoOne.getValue("test") should be ("")
+  }
+
+
 }

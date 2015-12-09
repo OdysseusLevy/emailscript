@@ -6,10 +6,17 @@ import com.google.common.base.Strings
 
 import scala.collection.JavaConverters._
 
+
+trait ValuesI {
+  def setValue(o: AnyRef, _name: String, _value: AnyRef): Unit
+  def hasValue(o: AnyRef, _name: String): Boolean
+  def removeValue(o: AnyRef, _name: String): Unit
+  def getValue(o: AnyRef, _name: String): AnyRef
+}
 /**
  * Used to attach a value (typically a string) to an object (typically as Who)
  */
-class Values(dataName: String, dataHandler: DataHandler) {
+class Values(dataName: String, dataHandler: DataHandler) extends ValuesI{
 
   private type ValuesMap = Map[String, AnyRef]
   private type ConcurrentMap = java.util.concurrent.ConcurrentHashMap[AnyRef, ValuesMap ]
@@ -84,6 +91,13 @@ class Values(dataName: String, dataHandler: DataHandler) {
     toConcurrent(data)
   }
 
+}
+
+object EmptyValues extends ValuesI {
+  override def setValue(o: AnyRef, _name: String, _value: AnyRef): Unit = {}
+  override def getValue(o: AnyRef, _name: String): AnyRef = ""
+  override def hasValue(o: AnyRef, _name: String): Boolean = false
+  override def removeValue(o: AnyRef, _name: String): Unit = {}
 }
 
 object Values {

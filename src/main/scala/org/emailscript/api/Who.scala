@@ -44,7 +44,7 @@ object WhoBean {
  *  - Set multiple tags
  *  - Set named values
  */
-class Who(val name: String, val email: String, tags: Tags, values: Values ) extends Exporter {
+class Who(val name: String, val email: String, tags: TagsI, values: ValuesI) extends Exporter {
 
   def doExport(): WhoBean = WhoBean(name, email)
 
@@ -137,7 +137,7 @@ class Who(val name: String, val email: String, tags: Tags, values: Values ) exte
 }
 
 object Who {
-  val NoOne = Who("None", "None")
+  val NoOne = new Who("None", "None", EmptyTags, EmptyValues)
 
   import org.emailscript.mail.MailMessageHelper.getOrElse
 

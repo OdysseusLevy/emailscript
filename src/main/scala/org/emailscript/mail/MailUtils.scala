@@ -42,6 +42,14 @@ object MailUtils {
     if (!folder.getStore.isConnected) {
       logger.info(s"reopening store connected to: ${folder.getName}")
       folder.getStore.connect(account.imapHost, account.user, account.password)
+
+      // When our connection goes away, the folder needs to be closed (and then reopened below)
+      try {
+        if (folder.isOpen)
+          folder.close(true)
+      } catch {
+        case _ => // ignore
+      }
     }
 
     if (!folder.isOpen){
