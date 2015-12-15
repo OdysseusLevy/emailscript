@@ -7,7 +7,7 @@ import javax.mail.Message.RecipientType
 import javax.mail._
 
 import com.sun.mail.imap.IMAPMessage
-import org.emailscript.api.{EmailAccount, Who}
+import org.emailscript.api.{EmailAccountBean, EmailAccount, Who}
 import org.emailscript.dkim.DkimVerifier
 import org.emailscript.dnsbl._
 import org.emailscript.helpers.LoggerFactory
@@ -36,7 +36,8 @@ object MailMessageHelper {
   }
 }
 
-class MailMessageHelper(val account: EmailAccount, val message: IMAPMessage, dnsbl: DnsblLookup = MailMessageHelper.DefaultDnsblLookups) {
+class MailMessageHelper(val message: IMAPMessage, val account: EmailAccountBean,
+                        dnsbl: DnsblLookup = MailMessageHelper.DefaultDnsblLookups) {
   message.setPeek(true)
 
   lazy val subject: String = MailMessageHelper.getOrElse(message.getSubject, "")

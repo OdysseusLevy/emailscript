@@ -47,7 +47,7 @@ object Configuration {
   }
 
   def getConfigFromReader(defaultName: String, reader: Reader): Option[(String,AnyRef)]={
-    val data = yaml.read(reader)
+    val data = yaml.read(reader, defaultName)
     getConfig(defaultName, data)
   }
 

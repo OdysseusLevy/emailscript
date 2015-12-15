@@ -3,6 +3,7 @@ package org.emailscript.helpers
 import ch.qos.logback.classic.{Level, LoggerContext}
 import ch.qos.logback.classic.spi.{StackTraceElementProxy, ILoggingEvent}
 import ch.qos.logback.core.AppenderBase
+import ch.qos.logback.core.sift.AbstractDiscriminator
 import ch.qos.logback.core.util.StatusPrinter
 import com.google.gdata.util.common.base.StringUtil
 import org.emailscript.api.{LogBean, Indexer}
@@ -63,16 +64,22 @@ class IndexAppender extends AppenderBase[ILoggingEvent] {
     indexer.index(bean)
   }
 
-def getStackTrace(elements: Array[StackTraceElementProxy]): String = {
-  if (elements == null)
-    return ""
+  def getStackTrace(elements: Array[StackTraceElementProxy]): String = {
+    if (elements == null)
+      return ""
 
-  var result = "Stack trace: "
-  elements.foreach(element => result += s"\n${element.toString}")
+    var result = "Stack trace: "
+    elements.foreach(element => result += s"\n${element.toString}")
 
-  result
+    result
+  }
+
 }
 
+class scriptDiscriminator(scriptName: String) extends AbstractDiscriminator {
+  override def getDiscriminatingValue(e: Nothing): String = scriptName
+
+  override def getKey: String = "script"
 }
 
 object Logger {

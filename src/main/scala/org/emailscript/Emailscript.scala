@@ -76,7 +76,6 @@ object Emailscript {
       Tags.save()
       Values.save()
 
-      MailUtils.close()
     } catch {
       case e: Throwable => logger.error("Error during close", e)
     }

@@ -3,6 +3,7 @@ package org.emailscript.api
 import java.io.StringWriter
 import java.text.DecimalFormat
 import java.time.LocalDate
+import java.util.Date
 import javax.script.Bindings
 
 import com.github.mustachejava.DefaultMustacheFactory
@@ -84,7 +85,7 @@ class Helper( scope: Bindings ) {
    * @param days
    * @return java.sql.Date (because the Java 8 date is not yet commonly used)
    */
-  def daysAgo(days: Int) = java.sql.Date.valueOf(LocalDate.now().minusDays(days))
+  def daysAgo(days: Int): Date = java.sql.Date.valueOf(LocalDate.now().minusDays(days))
 
   /**
    * What was date x weeks ago?

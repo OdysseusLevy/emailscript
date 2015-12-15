@@ -20,11 +20,11 @@ class Yaml(streamHandler: StreamHandler) extends DataHandler {
 
   val yaml = Yaml.createYaml()
 
-  def read(reader: Reader): Option[AnyRef] = {
+  def read(reader: Reader, name: String = "Unnammed"): Option[AnyRef] = {
     try {
       Some(yaml.load(reader))
     } catch {
-      case e: Throwable => logger.error(s"Failed to read data", e)
+      case e: Throwable => logger.error(s"Failed to read data for ${name}", e)
         throw e
     } finally {
       reader.close()
@@ -34,10 +34,10 @@ class Yaml(streamHandler: StreamHandler) extends DataHandler {
   def getOrElse[T](name: String, callback: () => T): T = {
     val reader = streamHandler.getReader(name)
 
-    if(!reader.isDefined)
+    if(reader.isEmpty)
       return callback()
 
-    read(reader.get).getOrElse(callback()).asInstanceOf[T]
+    read(reader.get, name).getOrElse(callback()).asInstanceOf[T]
   }
 
   def set(name: String, data: AnyRef) {
@@ -51,7 +51,7 @@ class Yaml(streamHandler: StreamHandler) extends DataHandler {
     try {
       yaml.dump(data, writer)
     } catch {
-      case e: Throwable => logger.error(s"Failed to save yaml data", e);
+      case e: Throwable => logger.error(s"Failed to save yaml data", e)
         throw e
     } finally{
       writer.close()

@@ -2,8 +2,9 @@ package org.emailscript.api
 
 import java.util.{Date, Properties}
 
-import org.emailscript.helpers.Importer
-import org.emailscript.mail.MailUtils
+import com.sun.mail.imap.IMAPFolder
+import org.emailscript.helpers.{Yaml, Importer}
+import org.emailscript.mail.{StoreWrapper, MailUtils}
 
 import scala.beans.BeanProperty
 
@@ -69,23 +70,24 @@ class EmailAccountBean extends NamedBean with Importer{
  * }}}
  *
  */
-class EmailAccount(val name: String, val user: String, val password: String, val imapHost: String, val imapPort: Int,
-                   val smtpHost: String, val smtpPort: Int) {
+class EmailAccount(bean: EmailAccountBean) {
 
   import EmailAccount._
+
+  val store = new StoreWrapper(bean)
 
   /**
    * Create an email object that can be sent
    * @group Functions
    */
-  def newMail() = EmailBean(user)
+  def newMail() = EmailBean(bean.user)
 
   /**
    * Send an email
    * @param message email to send
    * @group Functions
    */
-  def send(message: EmailBean) = MailUtils.sendMessage(this, message)
+  def send(message: EmailBean) = MailUtils.sendMessage(bean, message)
 
   /**
    * Continuously scan the folder waiting for new messages to appear.
@@ -96,7 +98,7 @@ class EmailAccount(val name: String, val user: String, val password: String, val
    * @param scanner callback
    * @group Functions
    */
-  def scanFolder(folderName: String, scanner: ProcessCallback): Unit = MailUtils.scanFolder(this, folderName, scanner)
+  def scanFolder(folderName: String, scanner: ProcessCallback): Unit = store.scanFolder(folderName, scanner)
 
   /**
    * Scan folder (same as above), but with option to not do the first, initial read
@@ -106,7 +108,7 @@ class EmailAccount(val name: String, val user: String, val password: String, val
    * @param scanner user supplied callback to handle the emails
    */
   def scanFolder(folderName: String, doFirstRead: Boolean,  scanner: ProcessCallback): Unit =
-    MailUtils.scanFolder(this, folderName, scanner, doFirstRead)
+    store.scanFolder(folderName, scanner, doFirstRead)
 
   /**
    * Read in all new messages. The first time this is run it will read in all messages. Subsequent calls will only return
@@ -115,34 +117,55 @@ class EmailAccount(val name: String, val user: String, val password: String, val
    * @param callback user supplied callback to handle the emails
    * @group Functions
    */
-  def readLatest(folderName: String, callback: ProcessCallback): Unit = MailUtils.readLatest(this, folderName, callback)
-
-  def foreach(emails: Array[Email], script: ProcessCallback): Unit = {
-    emails.foreach(script.callback(_))
+  def readLatest(folderName: String, callback: ProcessCallback): Unit = {
+    store.processLatest("LastRead", folderName, callback)
   }
 
   /**
    * Runs a script against all inbox emails
    * @group Functions
    */
-  def foreach(script: ProcessCallback): Unit = foreach(getEmails(), script)
+  def foreach(script: ProcessCallback): Unit = {
+
+    def get(folder: IMAPFolder) = store.getEmails(folder)
+    store.foreach(Inbox ,get, script.callback)
+  }
+
 
   /**
-   * Runs a script against a list of emails with the given uid
+    * Runs a script against every email in a given folder
+    * order is oldest to newest
+    *
+    * @param folderName folder to read in
+    *  @group Functions
+    */
+  def foreach(folderName: String, script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmails(folder)
+    store.foreach(folderName ,get, script.callback)
+  }
+
+  /**
+    * Runs a script against every email in a given folder
+    * order is newest to oldest
+    *
+    * @param folderName
+    * @param script
+    */
+  def foreachReversed(folderName: String, script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmailsReversed(folder)
+    store.foreach(folderName, get, script.callback)
+  }
+  /**
+   * Runs a script against a list of emails in Inbox with the given uid
    *
    * @param ids array of specific uid's of the desired emails
    * @param script user callback
    * @group Functions
    */
-  def foreach(ids: java.util.ArrayList[Number], script:ProcessCallback): Unit = foreach(getEmails(ids), script)
-
-  /**
-   * Runs a script against every email in a given folder
-   *
-   * @param folderName folder to read in
-   *  @group Functions
-   */
-  def foreach(folderName: String, script: ProcessCallback): Unit = foreach(getEmails(folderName), script)
+  def foreach(ids: java.util.ArrayList[Number], script:ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmailsByUID(folder, ids)
+    store.foreach(Inbox, get, script.callback)
+  }
 
   /**
    * Run a script against emails from a given list of ids and folder
@@ -152,8 +175,10 @@ class EmailAccount(val name: String, val user: String, val password: String, val
    * @param script script to run against each
    * @group Functions
    */
-  def foreach(folderName: String, ids: java.util.ArrayList[Number], script: ProcessCallback): Unit =
-    foreach(getEmails(folderName, ids), script)
+  def foreach(folderName: String, ids: java.util.ArrayList[Number], script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmailsByUID(folder, ids)
+    store.foreach(folderName, get, script.callback)
+  }
 
   /**
    * Runs a script against a given folder and limit of how many
@@ -162,88 +187,46 @@ class EmailAccount(val name: String, val user: String, val password: String, val
    * @param script
    *  @group Functions
    */
-  def foreach(folderName: String, limit: Int, script: ProcessCallback): Unit = foreach(getEmails(folderName, limit), script)
+  def foreach(folderName: String, limit: Int, script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmails(folder, limit)
+    store.foreach(folderName ,get, script.callback)
+  }
 
   /**
    * Runs a script against the Inbox with a given limit of how many email to read
    *
    * @param limit returns newest emails up to this limit
-   * @param script
+   * @param script closure to run against each
    *  @group Functions
    */
-  def foreach(limit: Int, script: ProcessCallback): Unit = foreach(getEmails(Inbox, limit), script)
-
-  /**
-   * Read all messages from Inbox
-   * @group Functions
-   */
-  def getEmails(): Array[Email] = getEmails(Inbox, 0)
-
-  /**
-   * Get emails from Inbox
-   * @param limit use this to limit how many messages. Eg. a limit of 10 will return the latest 10 messages. 0 returns all messages
-   * @group Functions
-   */
-  def getEmails(limit: Int): Array[Email] = getEmails(Inbox, limit)
-
-  /**
-   * Get specific emails by id
-   * @param ids uid's for the desired mails
-   */
-  def getEmails(ids: java.util.ArrayList[Number]): Array[Email] = getEmails(Inbox, ids)
-
-
-  /**
-   * Return all emails before a given date
-   * @param folder folder we are reading
-   * @param date return all emails that are older than this date
-   * @group Functions
-   */
-  def getEmailsBefore(folder: String, date: java.util.Date) = MailUtils.getEmailsBefore(this, folder, date)
-
-  /**
-   * Get all emails after a given date
-   * @param folder folder we are reading
-   * @param date return all emails that are newer than this date
-   *@group Functions
-   */
-  def getEmailsAfter(folder: String, date: Date) = MailUtils.getEmailsAfter(this, folder, date)
-
-  /**
-   * Get all emails from a specified folder
-   * @param folderName folder we are reading
-   * @group Functions
-   */
-  def getEmails(folderName: String): Array[Email] = getEmails(folderName, 0)
-
-  /**
-   * Get emails from a specified folder with a specified limit
-   *
-   * @param folderName folder we are reading from
-   * @param limit maximum number of emails to return
-   * @group Functions
-   */
-  def getEmails(folderName: String, limit: Int): Array[Email] = MailUtils.getEmails(this, folderName, limit)
-
-  def getEmails(folderName: String, ids: java.util.ArrayList[Number]) = MailUtils.getEmails(this, folderName, ids)
-
-  /**
-   * Get all emails after a given UID
-    *
-   * @param folderName folder we are looking in
-   * @param startUID starting id
-   * @group Functions
-   */
-  def getEmailsAfter(folderName: String, startUID: java.lang.Long): Array[Email] = {
-    MailUtils.getEmailsAfter(this, folderName, startUID)
+  def foreach(limit: Int, script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmails(folder, limit)
+    store.foreach(Inbox ,get, script.callback)
   }
 
   /**
-   * Returns true if this is a gmail account
-   *
-   * @group Functions
-   */
-  def isGmail() = user.toLowerCase.endsWith("gmail.com")
+    * Runs a script against all emails before a given date
+    *
+    * @param folderName folder to read
+    * @param date date before which we are interested
+    * @param script closure to run against each
+    */
+  def foreachBefore(folderName: String, date: Date, script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmailsBeforeDate(folder, date)
+    store.foreach(folderName ,get, script.callback)
+  }
+
+  /**
+    * Runs a script against all emails after a given date
+    *
+    * @param folderName folder to read
+    * @param date date after which we are interested
+    * @param script closure to run against each
+    */
+  def foreachAfter(folderName: String, date: Date, script: ProcessCallback): Unit = {
+    def get(folder: IMAPFolder) = store.getEmailsAfterDate(folder, date)
+    store.foreach(folderName ,get, script.callback)
+  }
 
   //
   // Folder support
@@ -254,13 +237,13 @@ class EmailAccount(val name: String, val user: String, val password: String, val
    * @param folderName
    * @group Functions
    */
-  def hasFolder(folderName : String): Boolean = MailUtils.hasFolder(this, folderName)
+  def hasFolder(folderName : String): Boolean = store.hasFolder(folderName)
 
   /**
    * Return all of the folder names for this account
    * @group Functions
    */
-  def getFolders(): Array[Folder] = MailUtils.getFolders(this)
+  def getFolders(): Array[Folder] = store.getFolders()
 
 }
 
@@ -268,44 +251,8 @@ object EmailAccount {
 
   val Inbox = "Inbox"
 
-  private val Trash = "Trash"
-  private val GmailTrash = "[Gmail]/Trash"
-
-  private val Spam = "Spam"
-  private val GmailSpam = "[Gmail]/Spam"
-
-  def trashFolder(account: EmailAccount): String = {
-    if (account.isGmail())
-      GmailTrash
-    else
-      Trash
-  }
-
-  val gmailTopLevelFolders = Set("inbox", "deleted messages", "drafts", "sent", "sent messages")
-
-  def getFolderName(account: EmailAccount, name: String): String = {
-    if (!account.isGmail)
-      return name
-
-    // Handle Gmail specific folders
-
-    name.toLowerCase() match {
-      case "trash" => "[Gmail]/Trash"
-      case "spam" => "[Gmail]/Spam"
-      case "drafts" => "[Gmail]/Drafts"
-      case _ => name
-    }
-  }
-
   def apply(bean: EmailAccountBean) = {
-    new EmailAccount(
-      bean.getNickname,
-      bean.getUser,
-      bean.getPassword,
-      bean.getImapHost,
-      bean.getImapPort,
-      bean.getSmtpHost,
-      bean.getSmtpPort)
+    new EmailAccount(bean)
   }
 
   def createBean(imapHost: String, user: String, password: String, smtpHost: String): EmailAccountBean = {
@@ -318,13 +265,5 @@ object EmailAccount {
     bean
   }
 
-  def toSmtpProperties(account: EmailAccount):Properties = {
-    val props = new Properties()
-    props.put("mail.smtp.host", account.smtpHost)
-    props.put("mail.smtp.socketFactory.port", account.smtpPort.toString)
-    props.put("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory")
-    props.put("mail.smtp.auth", "true")
-    props.put("mail.smtp.port", account.smtpPort.toString)
-    props
-  }
+
 }

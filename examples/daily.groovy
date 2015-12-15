@@ -41,8 +41,8 @@ def applyRules(folderName, rules) {
 
         def daysAgo = Helper.daysAgo(rules.folderDays)
         logger.info("looking for emails before: $daysAgo in $folderName")
-        emails = MyEmail.getEmailsBefore(folderName, daysAgo)
-        for(email in emails) {
+
+        MyEmail.foreachBefore(folderName, daysAgo){ email ->
             logger.info("removing old mail from: ${email.from} subject: ${email.subject} daysAgo: ${email.daysAgo}")
             email.delete()
         }
@@ -66,23 +66,20 @@ def getFolder(email) {
 }
 
 def counts = [:]
-def emails = MyEmail.getEmails("Inbox")
-emails = emails.reverse()   //want newest to oldest
-
-for(email in emails){
+MyEmail.foreachReversed("Inbox"){ email ->
 
     def folder = getFolder(email)
     if (!folder)
-        continue
+        return
 
     def rule = folderRules[folder]
     if (!rule)
-        continue
+        return
 
     counts[email.from] = (counts[email.from] ?: 0) + 1
 
     if (rule.saveUnread && !email.isRead)
-        continue
+        return
 
     if (rule.inboxMax && counts[email.from] > rule.inboxMax) {
         logger.info("email from: ${email.from} subject: ${email.subject} count: ${counts[email.from]} > ${rule.inboxMax}")

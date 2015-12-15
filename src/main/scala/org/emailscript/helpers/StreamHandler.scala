@@ -32,6 +32,7 @@ object FileHandler {
 
 class FileHandler(dataDir: File, extension: String) extends StreamHandler {
 
+
   def getDataFiles(): Array[File] = {
 
     if (!dataDir.exists()) {
